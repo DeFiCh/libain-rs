@@ -1,10 +1,5 @@
-[package]
-name = "ain-runtime"
-version = "0.1.0"
-edition = "2021"
-[lib]
-crate-type = ["cdylib"]
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-#wit-bindgen-rust = { git = "https://github.com/bytecodealliance/wit-bindgen.git"}
-[dependencies]
-wit-bindgen-rust = { git = "https://github.com/bytecodealliance/wit-bindgen.git"}
+[workspace]
+members = [
+    "apps/dex",
+    "runtime",
+]

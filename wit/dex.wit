@@ -1,0 +1,38 @@
+enum error {
+    runtime-error,
+    not-found-error,
+    invalid-input,
+    lack-of-liquidity,
+    price-higher-than-index,
+    pool-reserve-overflow,
+}
+
+type dct-id = u32
+
+record token-amount {
+    token-id : dct-id,
+    amount : s64
+}
+
+record pool-price {
+    integer : s64,
+    fraction : s64
+}
+
+record pool-pair {
+    token-a: dct-id,
+    token-b: dct-id,
+    commission: dct-id,
+    reserve-a: s64,
+    reserve-b: s64,
+    total-liquidity: s64,
+    block-commission-a: s64,
+    block-commission-b: s64,
+}
+
+record swap-result {
+    pool-pair : pool-pair,
+    slop-swap-result : s64
+}
+
+swap: function( poolpair : pool-pair, token-in  : token-amount, max-price : pool-price, post-bayfront-gardens : bool) -> expected<swap-result, error>
