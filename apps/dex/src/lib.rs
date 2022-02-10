@@ -131,7 +131,10 @@ impl Add for TokenAmount {
     type Output = TokenAmount;
 
     fn add(self, rhs: Self) -> Self::Output {
-        self.value.saturating_add(rhs.value)
+        TokenAmount {
+            token_id: self.token_id,
+            amount: self.amount.saturating_add(rhs.amount)
+        }
     }
 }
 
@@ -139,7 +142,10 @@ impl Sub for TokenAmount {
     type Output = TokenAmount;
 
     fn sub(self, rhs: Self) -> Self::Output {
-        self.value.saturating_sub(rhs.value)
+        TokenAmount {
+            token_id: self.token_id,
+            amount: self.amount.saturating_sub(rhs.amount)
+        }
     }
 }
 
@@ -150,13 +156,13 @@ impl PartialEq for TokenAmount {
 }
 
 
-struct BasicDex {}
+struct Dex {}
 
-impl dex::Dex for BasicDex {
+impl dex::Dex for Dex {
     fn swap(poolpair: PoolPair, token_in: TokenAmount, max_price: PoolPrice, post_bayfront_gardens: bool) -> Result<SwapResult, Error> {
         let mut poolpair = poolpair;
         if token_in.token_id != poolpair.token_a && token_in.token_id != poolpair.token_b {
-            panic!("Error, input token ID ({}) doesn't match pool tokens ({})", pool_pair.token_a, pool_pair.token_b);
+            panic!("Error, input token ID ({}) doesn't match pool tokens ({})", poolpair.token_a, poolpair.token_b);
         }
         if token_in.amount <= 0 {
             return Err(Error::InvalidInput);
@@ -187,7 +193,7 @@ impl dex::Dex for BasicDex {
             return Err(Error::PoolReserveOverflow);
         }
 
-        let result = if forward { BasicDex::slop_swap(token_in.amount, &mut poolpair.reserve_a, &mut poolpair.reserve_b, post_bayfront_gardens) } else { BasicDex::slop_swap(token_in.amount, &mut poolpair.reserve_b, &mut poolpair.reserve_a, post_bayfront_gardens) };
+        let result = if forward { Dex::slop_swap(token_in.amount, &mut poolpair.reserve_a, &mut poolpair.reserve_b, post_bayfront_gardens) } else { Dex::slop_swap(token_in.amount, &mut poolpair.reserve_b, &mut poolpair.reserve_a, post_bayfront_gardens) };
 
         Ok(SwapResult {
             pool_pair: poolpair,
@@ -197,7 +203,7 @@ impl dex::Dex for BasicDex {
 }
 
 
-impl BasicDex {
+impl Dex {
     pub fn slop_swap(unswapped: i64, pool_from: &mut i64, pool_to: &mut i64, post_bayfront_gardens: bool) -> i64 {
         let mut unswapped = unswapped;
 
