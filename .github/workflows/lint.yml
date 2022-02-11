@@ -1,4 +1,4 @@
-name: Build
+name: Lint
 
 on:
   push:
@@ -16,7 +16,5 @@ jobs:
           - ubuntu-18.04
     steps:
       - uses: actions/checkout@v2
-      - name: Build
-        run: cargo build --verbose --workspace
-      - name: Run tests
-        run: cargo test --verbose --workspace
+      - run: rustup component add rustfmt
+      - run: cargo fmt --all -- --check
