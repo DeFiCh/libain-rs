@@ -15,8 +15,7 @@ pub extern "C" fn ainrt_execute_dex_swap(
     token_in: &TokenAmount,
     max_price: &PoolPrice,
     post_bayfront_gardens: bool,
-    result: *mut SwapResult,
-) -> i32 {
+) -> i64 {
     let pp = unsafe { *poolpair.clone() };
     let tk_in = unsafe { token_in.clone() };
     let mp = unsafe { max_price.clone() };
@@ -27,8 +26,7 @@ pub extern "C" fn ainrt_execute_dex_swap(
     match dex_swap(dex_module_file_path, pp, tk_in, mp, post_bayfront_gardens) {
         Ok(res) => {
             unsafe { *poolpair = res.pool_pair }
-            unsafe { *result = res }
-            1
+            res.slop_swap_result
         }
         Err(_) => 0,
     }

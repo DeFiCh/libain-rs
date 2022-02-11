@@ -27,18 +27,12 @@ struct PoolPrice {
   int64_t fraction;
 };
 
-struct SwapResult {
-  PoolPair pool_pair;
-  int64_t slop_swap_result;
-};
-
 extern "C" {
 
-int32_t ainrt_execute_dex_swap(const char *dex_module_file_path,
+int64_t ainrt_execute_dex_swap(const char *dex_module_file_path,
                                PoolPair *poolpair,
                                const TokenAmount *token_in,
                                const PoolPrice *max_price,
-                               bool post_bayfront_gardens,
-                               SwapResult *result);
+                               bool post_bayfront_gardens);
 
 } // extern "C"
