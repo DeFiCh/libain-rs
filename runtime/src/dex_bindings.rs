@@ -1,3 +1,4 @@
+use std::marker::PhantomData;
 #[allow(unused_imports)]
 use wit_bindgen_wasmtime::{wasmtime, anyhow};
 #[repr(u8)]
@@ -163,9 +164,9 @@ unsafe impl wit_bindgen_wasmtime::AllBytesValid for SwapResult {}
 pub struct DexData {
 }
 pub struct Dex<T> {
-    get_state: Box<dyn Fn(&mut T) -> &mut DexData + Send + Sync>,
     memory: wasmtime::Memory,
     swap: wasmtime::TypedFunc<(i32,i32,i32,i64,i64,i64,i64,i64,i32,i64,i64,i64,i32,), (i32,)>,
+    data : PhantomData<T>
 }
 impl<T> Dex<T> {
     #[allow(unused_variables)]
@@ -177,8 +178,7 @@ impl<T> Dex<T> {
     /// auxiliary data necessary for these wasm exports from
     /// the general store's state.
     pub fn add_to_linker(
-        linker: &mut wasmtime::Linker<T>,
-        get_state: impl Fn(&mut T) -> &mut DexData + Send + Sync + Copy + 'static,
+        linker: &mut wasmtime::Linker<T>
     ) -> anyhow::Result<()> {
         Ok(())
     }
@@ -201,11 +201,10 @@ impl<T> Dex<T> {
         mut store: impl wasmtime::AsContextMut<Data = T>,
         module: &wasmtime::Module,
         linker: &mut wasmtime::Linker<T>,
-        get_state: impl Fn(&mut T) -> &mut DexData + Send + Sync + Copy + 'static,
     ) -> anyhow::Result<(Self, wasmtime::Instance)> {
-        Self::add_to_linker(linker, get_state)?;
+        Self::add_to_linker(linker)?;
         let instance = linker.instantiate(&mut store, module)?;
-        Ok((Self::new(store, &instance,get_state)?, instance))
+        Ok((Self::new(store, &instance)?, instance))
     }
 
     /// Low-level creation wrapper for wrapping up the exports
@@ -219,7 +218,7 @@ impl<T> Dex<T> {
     pub fn new(
         mut store: impl wasmtime::AsContextMut<Data = T>,
         instance: &wasmtime::Instance,
-        get_state: impl Fn(&mut T) -> &mut DexData + Send + Sync + Copy + 'static,
+
     ) -> anyhow::Result<Self> {
         let mut store = store.as_context_mut();
         let memory= instance
@@ -232,8 +231,7 @@ impl<T> Dex<T> {
         Ok(Dex{
             memory,
             swap,
-            get_state: Box::new(get_state),
-
+            data: Default::default()
         })
     }
     pub fn swap(&self, mut caller: impl wasmtime::AsContextMut<Data = T>,poolpair: PoolPair,token_in: TokenAmount,max_price: PoolPrice,post_bayfront_gardens: bool,)-> Result<Result<SwapResult,Error>, wasmtime::Trap> {
