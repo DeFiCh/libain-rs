@@ -1,5 +1,5 @@
 [workspace]
 members = [
-    "apps/dex",
-    "runtime",
+    "wasm-modules/dex",
+    "wasm-runtime",
 ]
