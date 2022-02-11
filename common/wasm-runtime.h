@@ -28,7 +28,7 @@ struct PoolPrice {
 };
 
 extern "C" {
-
+// Return slop swap result
 int64_t ainrt_execute_dex_swap(const char *dex_module_file_path,
                                PoolPair *poolpair,
                                const TokenAmount *token_in,
