@@ -1,12 +1,12 @@
 mod dex_bindings;
 
 use crate::dex_bindings::{Dex, DexData, PoolPair, PoolPrice, SwapResult, TokenAmount};
+use dashmap::DashMap;
+use lazy_static::lazy_static;
 use std::ffi::{CStr, CString};
 use std::os::raw::c_char;
 use std::path::Path;
 use std::sync::Arc;
-use dashmap::DashMap;
-use lazy_static::lazy_static;
 use wasmtime_wasi::{WasiCtx, WasiCtxBuilder};
 use wit_bindgen_wasmtime::anyhow::{anyhow, bail, Result};
 use wit_bindgen_wasmtime::wasmtime::*;
@@ -23,26 +23,17 @@ lazy_static! {
 }
 
 #[no_mangle]
-pub extern "C" fn ainrt_register_dex_module(
-    dex_module_file_path: *const c_char,
-) -> i32 {
+pub extern "C" fn ainrt_register_dex_module(dex_module_file_path: *const c_char) -> i32 {
     let dex_module_file_path = unsafe { CStr::from_ptr(dex_module_file_path) }
         .to_str()
         .unwrap();
     match register_dex_module(dex_module_file_path) {
-        Ok(_) => {
-            1
-        }
-        Err(_) => {
-            0
-        }
+        Ok(_) => 1,
+        Err(_) => 0,
     }
-
 }
 
-fn register_dex_module<P : AsRef<Path>>(
-   path: P,
-) -> Result<()>{
+fn register_dex_module<P: AsRef<Path>>(path: P) -> Result<()> {
     let engine = Engine::default();
     let mut linker = Linker::new(&engine);
     wasmtime_wasi::add_to_linker(&mut linker, |s| s)?;
@@ -61,7 +52,7 @@ fn register_dex_module<P : AsRef<Path>>(
 }
 
 #[no_mangle]
-pub extern "C" fn ainrt_execute_dex_swap(
+pub extern "C" fn ainrt_call_dex_swap(
     poolpair: *mut PoolPair,
     token_in: &TokenAmount,
     max_price: &PoolPrice,
@@ -90,7 +81,10 @@ fn dex_swap(
     max_price: PoolPrice,
     post_bayfront_gardens: bool,
 ) -> Result<SwapResult> {
-    let dex = Dex::new(STOREMAP.get_mut("dex").unwrap().value_mut(), MODULEMAP.get("dex").unwrap().value())?;
+    let dex = Dex::new(
+        STOREMAP.get_mut("dex").unwrap().value_mut(),
+        MODULEMAP.get("dex").unwrap().value(),
+    )?;
     let result = dex.swap(
         &mut STOREMAP.get_mut("dex").unwrap().value_mut(),
         poolpair,
@@ -101,17 +95,14 @@ fn dex_swap(
     result.map_err(|e| anyhow!(format!("{:?}", e)))
 }
 
-
 #[cfg(test)]
 mod tests {
+    use crate::{dex_swap, register_dex_module, PoolPair, PoolPrice, TokenAmount};
     use std::path::PathBuf;
     use std::time::Instant;
-    use crate::{dex_swap, PoolPair, PoolPrice, register_dex_module, TokenAmount};
     const COIN: i64 = 100000000;
     #[test]
     fn text_swap() {
-
-
         let gold = 1;
         let silver = 2;
 
@@ -123,7 +114,7 @@ mod tests {
             reserve_b: 1000 * COIN,
             total_liquidity: 1000 * COIN,
             block_commission_a: 0,
-            block_commission_b: 0
+            block_commission_b: 0,
         };
         let mut d = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
         d.pop();
@@ -133,16 +124,21 @@ mod tests {
 
         let token_in = TokenAmount {
             token_id: silver,
-            amount: 10 * COIN
+            amount: 10 * COIN,
         };
         let max_price = PoolPrice {
             integer: 100 * COIN,
-            fraction: 0
+            fraction: 0,
         };
         let instant = Instant::now();
         for i in 1..21 {
-            let result = dex_swap(pool_pair.clone(), token_in.clone(), max_price.clone(), true).unwrap();
-            println!("Result {}: {:#?}",i, result.slop_swap_result as f64 / COIN as f64);
+            let result =
+                dex_swap(pool_pair.clone(), token_in.clone(), max_price.clone(), true).unwrap();
+            println!(
+                "Result {}: {:#?}",
+                i,
+                result.slop_swap_result as f64 / COIN as f64
+            );
             pool_pair = result.pool_pair;
         }
         println!("21 swaps took {}ms", instant.elapsed().as_millis())
