@@ -10,3 +10,5 @@ crate-type = ["cdylib"]
 wit-bindgen-wasmtime = { git = "https://github.com/bytecodealliance/wit-bindgen.git"}
 wasmtime-wasi = "0.34.0"
 wasmtime-wasi-crypto = "0.34.0"
+lazy_static = "1.4.0"
+dashmap = "5.1.0"
