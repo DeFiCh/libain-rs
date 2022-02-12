@@ -1,24 +1,24 @@
 mod dex_bindings;
 
-use crate::dex_bindings::{Dex, DexData, PoolPair, PoolPrice, SwapResult, TokenAmount};
+use crate::dex_bindings::{Dex, PoolPair, PoolPrice, SwapResult, TokenAmount};
 use dashmap::DashMap;
 use lazy_static::lazy_static;
-use std::ffi::{CStr, CString};
+use std::ffi::{CStr};
 use std::os::raw::c_char;
 use std::path::Path;
 use std::sync::Arc;
 use wasmtime_wasi::{WasiCtx, WasiCtxBuilder};
-use wit_bindgen_wasmtime::anyhow::{anyhow, bail, Result};
+use wit_bindgen_wasmtime::anyhow::{anyhow, Result};
 use wit_bindgen_wasmtime::wasmtime::*;
 
+const DEX_MODULE_ID : &'static str = "dex";
+
 lazy_static! {
-    static ref MODULEMAP: Arc<DashMap<String, Instance>> = {
-        let mut m = DashMap::new();
-        Arc::new(m)
+    static ref MODULEMAP: Arc<DashMap< &'static str, Instance>> = {
+        Arc::new(DashMap::new())
     };
-    static ref STOREMAP: Arc<DashMap<String, Store<WasiCtx>>> = {
-        let mut m = DashMap::new();
-        Arc::new(m)
+    static ref STOREMAP: Arc<DashMap< &'static str, Store<WasiCtx>>> = {
+        Arc::new(DashMap::new())
     };
 }
 
@@ -44,10 +44,9 @@ fn register_dex_module<P: AsRef<Path>>(path: P) -> Result<()> {
         .build();
 
     let mut store = Store::new(&engine, wasi);
-    // linker.instantiate()
     let (_, instance) = Dex::instantiate(&mut store, &dex_module, &mut linker)?;
-    MODULEMAP.insert("dex".to_string(), instance);
-    STOREMAP.insert("dex".to_string(), store);
+    MODULEMAP.insert(DEX_MODULE_ID, instance);
+    STOREMAP.insert(DEX_MODULE_ID, store);
     Ok(())
 }
 
@@ -59,20 +58,13 @@ pub extern "C" fn ainrt_call_dex_swap(
     post_bayfront_gardens: bool,
 ) -> i64 {
     let pp = unsafe { *poolpair.clone() };
-    let tk_in = unsafe { token_in.clone() };
-    let mp = unsafe { max_price.clone() };
-
-    match dex_swap(pp, tk_in, mp, post_bayfront_gardens) {
+    match dex_swap(pp, token_in.clone() , max_price.clone(), post_bayfront_gardens) {
         Ok(res) => {
             unsafe { *poolpair = res.pool_pair }
             res.slop_swap_result
         }
         Err(_) => 0,
     }
-}
-
-struct Context {
-    pub wasi: WasiCtx,
 }
 
 fn dex_swap(
@@ -82,8 +74,8 @@ fn dex_swap(
     post_bayfront_gardens: bool,
 ) -> Result<SwapResult> {
     let dex = Dex::new(
-        STOREMAP.get_mut("dex").unwrap().value_mut(),
-        MODULEMAP.get("dex").unwrap().value(),
+        STOREMAP.get_mut(DEX_MODULE_ID).ok_or(anyhow!("module not found"))?.value_mut(),
+        MODULEMAP.get(DEX_MODULE_ID).ok_or(anyhow!("module not found"))?.value(),
     )?;
     let result = dex.swap(
         &mut STOREMAP.get_mut("dex").unwrap().value_mut(),
@@ -118,7 +110,6 @@ mod tests {
         };
         let mut d = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
         d.pop();
-        println!("{:?}", d);
         let path = d.join("pkg/modules-wasm/dex.wasm");
         register_dex_module(path).unwrap();
 
