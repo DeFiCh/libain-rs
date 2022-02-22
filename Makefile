@@ -7,7 +7,7 @@ build-pkg :
 	cp target/release/libruntime.so pkg/runtime-cpp/libruntime.so || cp target/release/libruntime.dylib pkg/runtime-cpp/libruntime.so
 	mkdir -p pkg/modules-wasm
 	$(CARGO) build --package dex --release --target wasm32-wasi
-	cp target/wasm32-wasi/debug/dex.wasm pkg/modules-wasm/dex.wasm
+	cp target/wasm32-wasi/release/dex.wasm pkg/modules-wasm/dex.wasm
 
 clean:
 	cargo clean
