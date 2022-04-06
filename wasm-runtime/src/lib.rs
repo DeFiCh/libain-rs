@@ -76,11 +76,11 @@ fn dex_swap(
     let dex = Dex::new(
         STOREMAP
             .get_mut(DEX_MODULE_ID)
-            .ok_or(anyhow!("module not found"))?
+            .ok_or_else(|| anyhow!("module not found"))?
             .value_mut(),
         MODULEMAP
             .get(DEX_MODULE_ID)
-            .ok_or(anyhow!("module not found"))?
+            .ok_or_else(|| anyhow!("module not found"))?
             .value(),
     )?;
     let result = dex.swap(
