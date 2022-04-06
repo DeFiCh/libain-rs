@@ -352,6 +352,6 @@ impl Dex {
         }
         *pool_from = pool_f.as_u64() as i64;
         *pool_to = pool_t.as_u64() as i64;
-        return swapped.as_u64() as i64;
+        swapped.as_u64() as i64
     }
 }

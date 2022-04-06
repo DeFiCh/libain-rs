@@ -11,11 +11,11 @@ use wasmtime_wasi::{WasiCtx, WasiCtxBuilder};
 use wit_bindgen_wasmtime::anyhow::{anyhow, Result};
 use wit_bindgen_wasmtime::wasmtime::*;
 
-const DEX_MODULE_ID: &'static str = "dex";
+const DEX_MODULE_ID: &str = "dex";
 
 lazy_static! {
-    static ref MODULEMAP: Arc<DashMap<&'static str, Instance>> = { Arc::new(DashMap::new()) };
-    static ref STOREMAP: Arc<DashMap<&'static str, Store<WasiCtx>>> = { Arc::new(DashMap::new()) };
+    static ref MODULEMAP: Arc<DashMap<&'static str, Instance>> = Arc::new(DashMap::new());
+    static ref STOREMAP: Arc<DashMap<&'static str, Store<WasiCtx>>> = Arc::new(DashMap::new());
 }
 
 #[no_mangle]
@@ -53,13 +53,8 @@ pub extern "C" fn ainrt_call_dex_swap(
     max_price: &PoolPrice,
     post_bayfront_gardens: bool,
 ) -> i64 {
-    let pp = unsafe { *poolpair.clone() };
-    match dex_swap(
-        pp,
-        token_in.clone(),
-        max_price.clone(),
-        post_bayfront_gardens,
-    ) {
+    let pp = unsafe { *poolpair };
+    match dex_swap(pp, *token_in, *max_price, post_bayfront_gardens) {
         Ok(res) => {
             unsafe { *poolpair = res.pool_pair }
             res.slop_swap_result
@@ -108,7 +103,7 @@ mod tests {
         let mut pool_pair = PoolPair {
             token_a: gold,
             token_b: silver,
-            commission: (0.1 as f64 * COIN as f64) as u32,
+            commission: (0.1_f64 * COIN as f64) as u32,
             reserve_a: 200 * COIN,
             reserve_b: 1000 * COIN,
             total_liquidity: 1000 * COIN,
@@ -130,8 +125,7 @@ mod tests {
         };
         let instant = Instant::now();
         for i in 1..21 {
-            let result =
-                dex_swap(pool_pair.clone(), token_in.clone(), max_price.clone(), true).unwrap();
+            let result = dex_swap(pool_pair, token_in, max_price, true).unwrap();
             println!(
                 "Result {}: {:#?}",
                 i,
