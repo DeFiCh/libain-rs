@@ -6,7 +6,7 @@ if ! cargo fmt --check; then
 fi
 
 if [[ $(git diff --name-only --staged -- '*.rs') ]] ; then # Only run clippy if a rust file is staged
-    if ! cargo clippy; then
+    if ! cargo clippy -- -D warnings; then
         echo "Commit rejected due to clippy error."
         exit 1
     fi
