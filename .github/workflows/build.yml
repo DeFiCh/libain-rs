@@ -16,6 +16,8 @@ jobs:
           - ubuntu-18.04
     steps:
       - uses: actions/checkout@v2
+      - name: Install cbindgen
+        run: cargo install cbindgen
       - name: Build
         run: make build-pkg
       - name: Run tests
