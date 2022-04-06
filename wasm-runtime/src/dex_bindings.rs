@@ -1,3 +1,4 @@
+use std::marker::PhantomData;
 #[allow(unused_imports)]
 use wit_bindgen_wasmtime::{anyhow, wasmtime};
 #[repr(u8)]
@@ -172,7 +173,6 @@ unsafe impl wit_bindgen_wasmtime::AllBytesValid for SwapResult {}
 #[derive(Default)]
 pub struct DexData {}
 pub struct Dex<T> {
-    get_state: Box<dyn Fn(&mut T) -> &mut DexData + Send + Sync>,
     memory: wasmtime::Memory,
     swap: wasmtime::TypedFunc<
         (
@@ -192,6 +192,7 @@ pub struct Dex<T> {
         ),
         (i32,),
     >,
+    data: PhantomData<T>,
 }
 impl<T> Dex<T> {
     #[allow(unused_variables)]
@@ -202,10 +203,7 @@ impl<T> Dex<T> {
     /// The `get_state` closure is required to access the
     /// auxiliary data necessary for these wasm exports from
     /// the general store's state.
-    pub fn add_to_linker(
-        linker: &mut wasmtime::Linker<T>,
-        get_state: impl Fn(&mut T) -> &mut DexData + Send + Sync + Copy + 'static,
-    ) -> anyhow::Result<()> {
+    pub fn add_to_linker(linker: &mut wasmtime::Linker<T>) -> anyhow::Result<()> {
         Ok(())
     }
 
@@ -227,11 +225,10 @@ impl<T> Dex<T> {
         mut store: impl wasmtime::AsContextMut<Data = T>,
         module: &wasmtime::Module,
         linker: &mut wasmtime::Linker<T>,
-        get_state: impl Fn(&mut T) -> &mut DexData + Send + Sync + Copy + 'static,
     ) -> anyhow::Result<(Self, wasmtime::Instance)> {
-        Self::add_to_linker(linker, get_state)?;
+        Self::add_to_linker(linker)?;
         let instance = linker.instantiate(&mut store, module)?;
-        Ok((Self::new(store, &instance, get_state)?, instance))
+        Ok((Self::new(store, &instance)?, instance))
     }
 
     /// Low-level creation wrapper for wrapping up the exports
@@ -245,7 +242,6 @@ impl<T> Dex<T> {
     pub fn new(
         mut store: impl wasmtime::AsContextMut<Data = T>,
         instance: &wasmtime::Instance,
-        get_state: impl Fn(&mut T) -> &mut DexData + Send + Sync + Copy + 'static,
     ) -> anyhow::Result<Self> {
         let mut store = store.as_context_mut();
         let memory = instance
@@ -269,7 +265,7 @@ impl<T> Dex<T> {
         Ok(Dex {
             memory,
             swap,
-            get_state: Box::new(get_state),
+            data: Default::default(),
         })
     }
     pub fn swap(
