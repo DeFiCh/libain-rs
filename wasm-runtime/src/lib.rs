@@ -3,30 +3,27 @@ mod dex_bindings;
 use crate::dex_bindings::{Dex, PoolPair, PoolPrice, SwapResult, TokenAmount};
 use dashmap::DashMap;
 use lazy_static::lazy_static;
-use std::ffi::{CStr};
+use std::ffi::CStr;
 use std::os::raw::c_char;
 use std::path::Path;
 use std::sync::Arc;
 use wasmtime_wasi::{WasiCtx, WasiCtxBuilder};
 use wit_bindgen_wasmtime::anyhow::{anyhow, Result};
-use wit_bindgen_wasmtime::wasmtime::*;
+use wit_bindgen_wasmtime::wasmtime::{Engine, Instance, Linker, Module, Store};
 
-const DEX_MODULE_ID : &'static str = "dex";
+const DEX_MODULE_ID: &str = "dex";
 
 lazy_static! {
-    static ref MODULEMAP: Arc<DashMap< &'static str, Instance>> = {
-        Arc::new(DashMap::new())
-    };
-    static ref STOREMAP: Arc<DashMap< &'static str, Store<WasiCtx>>> = {
-        Arc::new(DashMap::new())
-    };
+    static ref MODULEMAP: Arc<DashMap<&'static str, Instance>> = Arc::new(DashMap::new());
+    static ref STOREMAP: Arc<DashMap<&'static str, Store<WasiCtx>>> = Arc::new(DashMap::new());
 }
 
+/// # Safety
+///
+/// Should validate file path
 #[no_mangle]
-pub extern "C" fn ainrt_register_dex_module(dex_module_file_path: *const c_char) -> i32 {
-    let dex_module_file_path = unsafe { CStr::from_ptr(dex_module_file_path) }
-        .to_str()
-        .unwrap();
+pub unsafe extern "C" fn ainrt_register_dex_module(dex_module_file_path: *const c_char) -> i32 {
+    let dex_module_file_path = CStr::from_ptr(dex_module_file_path).to_str().unwrap();
     match register_dex_module(dex_module_file_path) {
         Ok(_) => 1,
         Err(_) => 0,
@@ -50,17 +47,20 @@ fn register_dex_module<P: AsRef<Path>>(path: P) -> Result<()> {
     Ok(())
 }
 
+/// # Safety
+///
+/// TODO
 #[no_mangle]
-pub extern "C" fn ainrt_call_dex_swap(
+pub unsafe extern "C" fn ainrt_call_dex_swap(
     poolpair: *mut PoolPair,
     token_in: &TokenAmount,
     max_price: &PoolPrice,
     post_bayfront_gardens: bool,
 ) -> i64 {
-    let pp = unsafe { *poolpair.clone() };
-    match dex_swap(pp, token_in.clone() , max_price.clone(), post_bayfront_gardens) {
+    let pp = *poolpair;
+    match dex_swap(pp, *token_in, *max_price, post_bayfront_gardens) {
         Ok(res) => {
-            unsafe { *poolpair = res.pool_pair }
+            *poolpair = res.pool_pair;
             res.slop_swap_result
         }
         Err(_) => 0,
@@ -74,8 +74,14 @@ fn dex_swap(
     post_bayfront_gardens: bool,
 ) -> Result<SwapResult> {
     let dex = Dex::new(
-        STOREMAP.get_mut(DEX_MODULE_ID).ok_or(anyhow!("module not found"))?.value_mut(),
-        MODULEMAP.get(DEX_MODULE_ID).ok_or(anyhow!("module not found"))?.value(),
+        STOREMAP
+            .get_mut(DEX_MODULE_ID)
+            .ok_or_else(|| anyhow!("module not found"))?
+            .value_mut(),
+        MODULEMAP
+            .get(DEX_MODULE_ID)
+            .ok_or_else(|| anyhow!("module not found"))?
+            .value(),
     )?;
     let result = dex.swap(
         &mut STOREMAP.get_mut("dex").unwrap().value_mut(),
@@ -92,7 +98,7 @@ mod tests {
     use crate::{dex_swap, register_dex_module, PoolPair, PoolPrice, TokenAmount};
     use std::path::PathBuf;
     use std::time::Instant;
-    const COIN: i64 = 100000000;
+    const COIN: i64 = 100_000_000;
     #[test]
     fn text_swap() {
         let gold = 1;
@@ -101,7 +107,7 @@ mod tests {
         let mut pool_pair = PoolPair {
             token_a: gold,
             token_b: silver,
-            commission: (0.1 as f64 * COIN as f64) as u32,
+            commission: (0.1_f64 * COIN as f64) as u32,
             reserve_a: 200 * COIN,
             reserve_b: 1000 * COIN,
             total_liquidity: 1000 * COIN,
@@ -123,8 +129,7 @@ mod tests {
         };
         let instant = Instant::now();
         for i in 1..21 {
-            let result =
-                dex_swap(pool_pair.clone(), token_in.clone(), max_price.clone(), true).unwrap();
+            let result = dex_swap(pool_pair, token_in, max_price, true).unwrap();
             println!(
                 "Result {}: {:#?}",
                 i,

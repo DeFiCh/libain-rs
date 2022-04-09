@@ -4,8 +4,8 @@ use wit_bindgen_wasmtime::{anyhow, wasmtime};
 #[repr(u8)]
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Error {
-    RuntimeError,
-    NotFoundError,
+    Runtime,
+    NotFound,
     InvalidInput,
     LackOfLiquidity,
     PriceHigherThanIndex,
@@ -14,8 +14,8 @@ pub enum Error {
 impl std::fmt::Debug for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Error::RuntimeError => f.debug_tuple("Error::RuntimeError").finish(),
-            Error::NotFoundError => f.debug_tuple("Error::NotFoundError").finish(),
+            Error::Runtime => f.debug_tuple("Error::Runtime").finish(),
+            Error::NotFound => f.debug_tuple("Error::NotFound").finish(),
             Error::InvalidInput => f.debug_tuple("Error::InvalidInput").finish(),
             Error::LackOfLiquidity => f.debug_tuple("Error::LackOfLiquidity").finish(),
             Error::PriceHigherThanIndex => f.debug_tuple("Error::PriceHigherThanIndex").finish(),
@@ -172,26 +172,29 @@ unsafe impl wit_bindgen_wasmtime::AllBytesValid for SwapResult {}
 /// when translating between the host and wasm.
 #[derive(Default)]
 pub struct DexData {}
+
+type SwapTypedFunc = wasmtime::TypedFunc<
+    (
+        i32,
+        i32,
+        i32,
+        i64,
+        i64,
+        i64,
+        i64,
+        i64,
+        i32,
+        i64,
+        i64,
+        i64,
+        i32,
+    ),
+    (i32,),
+>;
+
 pub struct Dex<T> {
     memory: wasmtime::Memory,
-    swap: wasmtime::TypedFunc<
-        (
-            i32,
-            i32,
-            i32,
-            i64,
-            i64,
-            i64,
-            i64,
-            i64,
-            i32,
-            i64,
-            i64,
-            i64,
-            i32,
-        ),
-        (i32,),
-    >,
+    swap: SwapTypedFunc,
     data: PhantomData<T>,
 }
 impl<T> Dex<T> {
@@ -317,7 +320,7 @@ impl<T> Dex<T> {
                 result3,
             ),
         )?;
-        let load5 = memory.data_mut(&mut caller).load::<i32>(result4_0 + 0)?;
+        let load5 = memory.data_mut(&mut caller).load::<i32>(result4_0)?;
         let load6 = memory.data_mut(&mut caller).load::<i32>(result4_0 + 8)?;
         let load7 = memory.data_mut(&mut caller).load::<i32>(result4_0 + 16)?;
         let load8 = memory.data_mut(&mut caller).load::<i32>(result4_0 + 24)?;
@@ -342,8 +345,8 @@ impl<T> Dex<T> {
                 slop_swap_result: load14,
             }),
             1 => Err(match load6 {
-                0 => Error::RuntimeError,
-                1 => Error::NotFoundError,
+                0 => Error::Runtime,
+                1 => Error::NotFound,
                 2 => Error::InvalidInput,
                 3 => Error::LackOfLiquidity,
                 4 => Error::PriceHigherThanIndex,

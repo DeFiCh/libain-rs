@@ -3,8 +3,8 @@ use std::ops::{Add, Sub};
 
 use crate::dex::{Error, PoolPair, PoolPrice, SwapResult, TokenAmount};
 
-const COIN: i64 = 100000000;
-const MINIMUM_LIQUIDITY: i64 = 1000;
+const COIN: i64 = 100_000_000;
+// const MINIMUM_LIQUIDITY: i64 = 1000;
 const SLOPE_SWAP_RATE: i64 = 1000;
 const PRECISION: u32 = COIN as u32;
 
@@ -12,8 +12,8 @@ mod dex {
     #[repr(u8)]
     #[derive(Clone, Copy, PartialEq, Eq)]
     pub enum Error {
-        RuntimeError,
-        NotFoundError,
+        // Runtime,
+        // NotFound,
         InvalidInput,
         LackOfLiquidity,
         PriceHigherThanIndex,
@@ -22,8 +22,8 @@ mod dex {
     impl std::fmt::Debug for Error {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             match self {
-                Error::RuntimeError => f.debug_tuple("Error::RuntimeError").finish(),
-                Error::NotFoundError => f.debug_tuple("Error::NotFoundError").finish(),
+                // Error::Runtime => f.debug_tuple("Error::Runtime").finish(),
+                // Error::NotFound => f.debug_tuple("Error::NotFound").finish(),
                 Error::InvalidInput => f.debug_tuple("Error::InvalidInput").finish(),
                 Error::LackOfLiquidity => f.debug_tuple("Error::LackOfLiquidity").finish(),
                 Error::PriceHigherThanIndex => {
@@ -198,7 +198,7 @@ mod dex {
         *((ptr4 + 24) as *mut i32) = result3_3;
         *((ptr4 + 16) as *mut i32) = result3_2;
         *((ptr4 + 8) as *mut i32) = result3_1;
-        *((ptr4 + 0) as *mut i32) = result3_0;
+        *((ptr4) as *mut i32) = result3_0;
         ptr4
     }
     pub trait Dex {
@@ -250,12 +250,12 @@ impl dex::Dex for Dex {
         post_bayfront_gardens: bool,
     ) -> Result<SwapResult, Error> {
         let mut poolpair = poolpair;
-        if token_in.token_id != poolpair.token_a && token_in.token_id != poolpair.token_b {
-            panic!(
-                "Error, input token ID ({}) doesn't match pool tokens ({})",
-                poolpair.token_a, poolpair.token_b
-            );
-        }
+        assert!(
+            !(token_in.token_id != poolpair.token_a && token_in.token_id != poolpair.token_b),
+            "Error, input token ID ({}) doesn't match pool tokens ({})",
+            poolpair.token_a,
+            poolpair.token_b
+        );
         if token_in.amount <= 0 {
             return Err(Error::InvalidInput);
         }
@@ -352,6 +352,6 @@ impl Dex {
         }
         *pool_from = pool_f.as_u64() as i64;
         *pool_to = pool_t.as_u64() as i64;
-        return swapped.as_u64() as i64;
+        swapped.as_u64() as i64
     }
 }

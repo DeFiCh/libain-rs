@@ -1,0 +1,13 @@
+#!/bin/bash
+
+if ! cargo fmt --check; then
+    echo "Commit rejected due to invalid formatting. Run cargo fmt to fix."
+    exit 1
+fi
+
+if [[ $(git diff --name-only --staged -- '*.rs') ]] ; then # Only run clippy if a rust file is staged
+    if ! cargo clippy -- -D warnings; then
+        echo "Commit rejected due to clippy error."
+        exit 1
+    fi
+fi
