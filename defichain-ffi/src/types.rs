@@ -62,6 +62,15 @@ impl Script {
         }
     }
 
+    pub fn new(v: i64) -> Self {
+        unsafe {
+            cpp! { [v as "int64_t"] -> Script as "CScript" {
+                    return CScript(v);
+                }
+            }
+        }
+    }
+
     pub fn get_hex(&self) -> String {
         unsafe {
             cpp!([self as "const CScript*"] -> String as "rust::String" {
