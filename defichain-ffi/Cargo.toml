@@ -1,0 +1,20 @@
+[package]
+name = "defichain-ffi"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+links = "leveldb"
+
+[dependencies]
+cxx = "1.0"
+cpp = "0.5.6"
+hex = "0.4.3"
+thiserror = "1.0"
+
+[build-dependencies]
+#cxx-build = "1.0"
+cpp_build = "0.5.6"
+cmake = "0.1"
+num_cpus = "1.10"

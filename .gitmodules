@@ -1,0 +1,8 @@
+[submodule "defichain-ffi/depend/ain"]
+	path = defichain-ffi/depend/ain
+	url = https://github.com/DeFiCh/ain.git
+	branch = v3
+[submodule "defichain-ffi/depend/cxx"]
+	path = defichain-ffi/depend/cxx
+	url = https://github.com/dtolnay/cxx
+    branch = master

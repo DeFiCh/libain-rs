@@ -1,4 +1,5 @@
 mod dex_bindings;
+mod types;
 
 use crate::dex_bindings::{Dex, PoolPair, PoolPrice, SwapResult, TokenAmount};
 use dashmap::DashMap;
@@ -121,7 +122,6 @@ mod tests {
             integer: 100 * COIN,
             fraction: 0,
         };
-        let instant = Instant::now();
         for i in 1..21 {
             let result =
                 dex_swap(pool_pair.clone(), token_in.clone(), max_price.clone(), true).unwrap();
@@ -132,6 +132,5 @@ mod tests {
             );
             pool_pair = result.pool_pair;
         }
-        println!("21 swaps took {}ms", instant.elapsed().as_millis())
     }
 }
