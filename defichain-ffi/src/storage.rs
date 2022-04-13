@@ -3,11 +3,14 @@ use crate::types::*;
 
 cpp! {{
     #include <masternodes/accounts.h>
-#include <masternodes/accounts.h>
+    #include <flushablestorage.h>
 }}
 
-cpp_class!(pub unsafe struct AccountStorage as "CAccountsView");
 cpp_class!(pub unsafe struct DB as "std::shared_ptr<CStorageKV>");
+
+pub struct  Accounts {
+    db : DB
+}
 
 
 impl AccountStorage {
