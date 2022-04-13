@@ -35,9 +35,6 @@ mod test {
 
     #[test]
     fn test_account_storage() {
-        // unsafe { cpp!([self as "const MyClass*", param as "int"] -> i32 as "int" {
-        ///             return self->member_function(param);
-        ///         }) }
         unsafe {
             cpp!([] {
                 auto pcustomcsDB = std::make_shared<CStorageKV>(CStorageLevelDB("level_db_account_storage", 3000000, true, false));
@@ -48,7 +45,5 @@ mod test {
             }
         )
         }
-
-        //let res = AccountStorage::add_balance(Script::new(1), TokenAmount::new(DctId::new(0), 1000));
     }
 }
