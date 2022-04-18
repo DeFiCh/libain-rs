@@ -17,10 +17,6 @@ cpp_class! {
     pub unsafe struct DctId as "DCT_ID"
 }
 cpp_class!(pub unsafe struct Script as "CScript");
-cpp_class! {
-    #[derive(PartialEq)]
-    pub unsafe struct TokenAmount as "CTokenAmount"
-}
 
 cpp_class!(pub unsafe struct Res as "Res");
 
@@ -105,6 +101,11 @@ impl Script {
     }
 }
 
+
+cpp_class! {
+    #[derive(PartialEq)]
+    pub unsafe struct TokenAmount as "CTokenAmount"
+}
 impl TokenAmount {
     pub fn new(token_id: DctId, amount: u64) -> Self {
         unsafe {
@@ -129,6 +130,15 @@ impl TokenAmount {
             return self->nValue;
         })
         }
+    }
+}
+
+impl Debug for TokenAmount {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("TokenAmount")
+            .field("token_id", &self.token_id().value())
+            .field("amount", &self.amount())
+            .finish()
     }
 }
 
@@ -199,7 +209,9 @@ mod test {
         let decoded_hex = hex::decode(encoded_hex).unwrap();
         let script = Script::from_vec(decoded_hex);
         assert_eq!(script.get_hex(), encoded_hex);
-        assert!(script.has_valid_ops())
+        assert!(script.has_valid_ops());
+        let script = Script::new(2);
+        println!("{}", script.get_hex())
     }
 }
 
