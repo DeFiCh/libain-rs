@@ -1,0 +1,18 @@
+syntax = "proto3";
+package rpc;
+
+import "rpc/union.proto";
+import "google/protobuf/empty.proto";
+
+message BlockInput {
+    string block_hash = 1;  // Block hash
+    uint32 verbosity = 2; // 0 for hex-encoded data, 1 for a json object, and 2 for json object with transaction data
+}
+
+// NOTE: Only retain services here
+
+service Blockchain {
+    // Returns the hash of the best (tip) block in the most-work fully-validated chain.
+    rpc GetBestBlockHash(google.protobuf.Empty) returns (union.BlockResult);
+    rpc GetBlock(BlockInput) returns (union.BlockResult);
+}

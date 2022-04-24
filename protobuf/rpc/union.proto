@@ -1,0 +1,11 @@
+syntax = "proto3";
+package union; // group certain "either-or" types in this namespace
+
+import "types/block.proto";
+
+message BlockResult {
+    oneof result {
+        string hex_data = 1; // Hex-encoded data for block hash (for verbosity 0)
+        types.Block block = 2; // Block data (for verbosity 1 and 2)
+    }
+}
