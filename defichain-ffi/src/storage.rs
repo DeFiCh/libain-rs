@@ -24,8 +24,9 @@ impl Accounts {
             //let b = owner;
             cpp!([ db as "std::shared_ptr<CStorageKV>", owner as "CScript", amount as "CTokenAmount"] {
                 CStorageView sview = CStorageView(db);
-                //sview.WriteBy<CAccountsView::ByBalanceKey>(BalanceKey{owner, amount.nTokenId}, amount.nValue);
-                sview.Write(uint64_t(1), amount.nValue);
+                sview.WriteBy<CAccountsView::ByBalanceKey>(BalanceKey{owner, amount.nTokenId}, amount.nValue);
+                sview.Flush();
+                //sview.Write(uint64_t(1), amount.nValue);
             })
         };
     }
@@ -38,8 +39,8 @@ impl Accounts {
                 CAmount val;
                 CStorageView sview = CStorageView(db);
 
-                //bool ok = sview.ReadBy<CAccountsView::ByBalanceKey>(BalanceKey{owner, token_id}, val);
-                bool ok = sview.Read(uint64_t(1), val);
+                bool ok = sview.ReadBy<CAccountsView::ByBalanceKey>(BalanceKey{owner, token_id}, val);
+                //bool ok = sview.Read(uint64_t(1), val);
                 if (ok) {
                     printf("OK");
                     return CTokenAmount{token_id, val};
