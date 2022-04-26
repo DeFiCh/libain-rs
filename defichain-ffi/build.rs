@@ -1,14 +1,18 @@
 use std::env;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use fs_extra::dir::DirEntryAttr::Path as FilePath;
+use fs_extra::dir::DirOptions;
 
 const LIBDIR: &'static str = "lib";
 
-fn build_leveldb() {
-    println!("[leveldb] Building ain");
+fn build_ain() {
+    println!("[ain] building ain");
+
     let outdir = PathBuf::from(env::var("OUT_DIR").unwrap());
     let project_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR not set"));
-    //TODO; BUILD AIN
+
+    // Link AIN static libs
     println!("cargo:rustc-link-search={}", project_dir.join("depend/ain/src/leveldb").display());
     println!("cargo:rustc-link-lib=static=leveldb");
     println!("cargo:rustc-link-lib=static=memenv");
@@ -20,32 +24,27 @@ fn build_leveldb() {
     println!("cargo:rustc-link-lib=static=crc32c");
     println!("cargo:rustc-link-lib=static=crc32c_sse42");
 
-    println!("cargo:rustc-link-search={}", project_dir.join("depend/ain/src").display());
+    //println!("cargo:rustc-link-search={}", project_dir.join("depend/ain/src").display());
 
-    // Dependencies, TODO : make it universal for other other os builds
-    Command::new("tar")
-        .args([
-            "-xf",
-            project_dir.join("depend/ain/depends/built/x86_64-pc-linux-gnu/bdb/bdb-4.8.30-7fd992a3c53.tar.gz").to_str().unwrap(),
-            "-C",
-            outdir.to_str().unwrap()])
-        .output()
-        .unwrap();
-
-    Command::new("tar")
-        .args([
-            "-xf",
-            project_dir.join("depend/ain/depends/built/x86_64-pc-linux-gnu/boost/boost-1_77_0-b3e55a1245a.tar.gz").to_str().unwrap(),
-            "-C",
-            outdir.to_str().unwrap()
-        ]).output().unwrap();
-    Command::new("tar")
-        .args([
-            "-xf",
-            project_dir.join("depend/ain/depends/built/x86_64-pc-linux-gnu/libevent/libevent-2.1.8-stable-ad73abaca87.tar.gz").to_str().unwrap(),
-            "-C",
-            outdir.to_str().unwrap()
-        ]).output().unwrap();
+    let mut options = DirOptions::new();
+    options.depth = 5; //
+    let dir_content = fs_extra::dir::get_dir_content2("depend/ain/depends/built", &options).unwrap();
+    for file in dir_content.files {
+        let path = PathBuf::from(&file);
+        if let Some(ext) = path.extension() {
+            let ext = ext.to_str().unwrap().to_string();
+            if ext.ends_with("gz") {
+                Command::new("tar")
+                    .args([
+                        "-xf",
+                       path.to_str().unwrap(),
+                        "-C",
+                        outdir.to_str().unwrap()])
+                    .output()
+                    .unwrap();
+            }
+        }
+    }
 
     println!("cargo:rustc-link-search={}", outdir.join("lib").display());
     println!("cargo:rustc-link-lib=static=boost_atomic-mt-x64");
@@ -56,7 +55,7 @@ fn build_leveldb() {
 
 
 fn main() {
-    build_leveldb();
+    build_ain();
     let target = env::var("TARGET").expect("TARGET was not set");
 
     let outdir = env::var("OUT_DIR").unwrap();

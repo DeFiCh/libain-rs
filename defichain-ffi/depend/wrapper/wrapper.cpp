@@ -44,7 +44,6 @@ CAmount AmountFromValue(const UniValue& value)
 }
 
 // Found in src/masternodes/rpc_oracles.cpp
-
 bool diffInHour(int64_t time1, int64_t time2) {
     constexpr const int64_t SECONDS_PER_HOUR = 3600u;
     return std::abs(time1 - time2) < SECONDS_PER_HOUR;

@@ -3,6 +3,7 @@ use crate::types::*;
 
 cpp! {{
     #include <masternodes/accounts.h>
+    #include <masternodes/masternodes.h>
     #include <flushablestorage.h>
     #include <iostream>
     #include <stdio.h>
