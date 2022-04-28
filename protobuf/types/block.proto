@@ -1,7 +1,7 @@
 syntax = "proto3";
 package types;
 
-import "types/union.proto";
+import "types/tx.proto";
 
 message Block {
     string hash = 1; // Block hash (same as input, if any)
@@ -13,7 +13,7 @@ message Block {
     uint64 version = 7; // The block version
     string version_hex = 8; // The block version in hex
     string merkleroot = 9; // The merkle root
-    repeated union.Transaction tx = 10; // List of transaction IDs
+    repeated types.Transaction tx = 10; // List of transaction IDs
     uint64 time = 11; // The block time in seconds since UNIX epoch
     uint64 mediantime = 12; // The median block time in seconds since UNIX epoch
     uint64 nonce = 13; // The nonce used to generate the block (property exists only when PoW is used)
@@ -39,4 +39,14 @@ message NonUTXO {
     double loan = 4;
     double options = 5;
     double unknown = 6;
+}
+
+message BlockInput {
+    string block_hash = 1;  // Block hash
+    uint32 verbosity = 2; // 0 for hex-encoded data, 1 for a json object, and 2 for json object with transaction data
+}
+
+message BlockResult {
+    string hex_data = 1; // Hex-encoded data for block hash (for verbosity 0)
+    Block block = 2; // Block data (for verbosity 1 and 2)
 }

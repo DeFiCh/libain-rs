@@ -1,6 +1,11 @@
 syntax = "proto3";
 package types;
 
+message Transaction {
+    string hash = 1; // Transaction hash
+    RawTransaction raw = 2; // Raw transaction data
+}
+
 message RawTransaction {
     bool in_active_chain = 1; // Whether specified block is in the active chain or not (only present with explicit "blockhash" argument)
     string hex = 2; // The serialized, hex-encoded data for 'txid'
