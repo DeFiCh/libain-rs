@@ -3,7 +3,7 @@ mod dex_bindings;
 use crate::dex_bindings::{Dex, PoolPair, PoolPrice, SwapResult, TokenAmount};
 use dashmap::DashMap;
 use lazy_static::lazy_static;
-use std::ffi::{CStr};
+use std::ffi::CStr;
 use std::os::raw::c_char;
 use std::path::Path;
 use std::sync::Arc;
@@ -11,15 +11,11 @@ use wasmtime_wasi::{WasiCtx, WasiCtxBuilder};
 use wit_bindgen_wasmtime::anyhow::{anyhow, Result};
 use wit_bindgen_wasmtime::wasmtime::*;
 
-const DEX_MODULE_ID : &'static str = "dex";
+const DEX_MODULE_ID: &'static str = "dex";
 
 lazy_static! {
-    static ref MODULEMAP: Arc<DashMap< &'static str, Instance>> = {
-        Arc::new(DashMap::new())
-    };
-    static ref STOREMAP: Arc<DashMap< &'static str, Store<WasiCtx>>> = {
-        Arc::new(DashMap::new())
-    };
+    static ref MODULEMAP: Arc<DashMap<&'static str, Instance>> = { Arc::new(DashMap::new()) };
+    static ref STOREMAP: Arc<DashMap<&'static str, Store<WasiCtx>>> = { Arc::new(DashMap::new()) };
 }
 
 #[no_mangle]
@@ -58,7 +54,12 @@ pub extern "C" fn ainrt_call_dex_swap(
     post_bayfront_gardens: bool,
 ) -> i64 {
     let pp = unsafe { *poolpair.clone() };
-    match dex_swap(pp, token_in.clone() , max_price.clone(), post_bayfront_gardens) {
+    match dex_swap(
+        pp,
+        token_in.clone(),
+        max_price.clone(),
+        post_bayfront_gardens,
+    ) {
         Ok(res) => {
             unsafe { *poolpair = res.pool_pair }
             res.slop_swap_result
@@ -74,8 +75,14 @@ fn dex_swap(
     post_bayfront_gardens: bool,
 ) -> Result<SwapResult> {
     let dex = Dex::new(
-        STOREMAP.get_mut(DEX_MODULE_ID).ok_or(anyhow!("module not found"))?.value_mut(),
-        MODULEMAP.get(DEX_MODULE_ID).ok_or(anyhow!("module not found"))?.value(),
+        STOREMAP
+            .get_mut(DEX_MODULE_ID)
+            .ok_or(anyhow!("module not found"))?
+            .value_mut(),
+        MODULEMAP
+            .get(DEX_MODULE_ID)
+            .ok_or(anyhow!("module not found"))?
+            .value(),
     )?;
     let result = dex.swap(
         &mut STOREMAP.get_mut("dex").unwrap().value_mut(),
