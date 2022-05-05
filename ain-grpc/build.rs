@@ -114,6 +114,7 @@ fn modify_codegen(
     methods: HashMap<String, Vec<RPC>>,
     types_path: &Path,
     rpc_path: &Path,
+    lib_path: &Path,
 ) -> TokenStream {
     let mut contents = String::new();
     File::open(types_path)
@@ -174,6 +175,13 @@ fn modify_codegen(
         .unwrap()
         .write_all(contents.as_bytes())
         .unwrap();
+
+    contents.clear();
+    File::open(lib_path)
+        .unwrap()
+        .read_to_string(&mut contents)
+        .unwrap();
+    codegen.push_str(&contents);
 
     codegen.parse().unwrap() // given to cxx codegen
 }
@@ -326,8 +334,13 @@ fn apply_substitutions(
             ));
             server_mod.extend(quote!(
                 async fn #name_rs(#input_rs) -> Result<tonic::Response<super::types::#oty>, tonic::Status> {
-                    #into_ffi
-                    let result = ffi::#name(#call_ffi).map_err(|e| tonic::Status::unknown(e.to_string()))?;
+                    let result = tokio::task::spawn_blocking(|| {
+                        #into_ffi
+                        ffi::#name(#call_ffi).map_err(|e| tonic::Status::unknown(e.to_string()))
+                    }).await
+                    .map_err(|e| {
+                        tonic::Status::unknown(format!("failed to invoke RPC call: {}", e))
+                    })??;
                     Ok(tonic::Response::new(result.into()))
                 }
             ));
@@ -378,13 +391,16 @@ fn get_path_bracketed_ty_simple(ty: &Type) -> Type {
 
 fn main() {
     let mut root = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
+    let parent = root.clone();
     root.pop();
     let out_dir = env::var("OUT_DIR").unwrap();
     let methods = generate_from_protobuf(&root.join("protobuf"), Path::new(&out_dir));
+    println!("{}", parent.display());
     let tt = modify_codegen(
         methods,
         &Path::new(&out_dir).join("types.rs"),
         &Path::new(&out_dir).join("rpc.rs"),
+        &parent.join("src").join("lib.rs"),
     );
     generate_cxx_glue(tt, &root.join("target"));
 }

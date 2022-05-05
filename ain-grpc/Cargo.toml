@@ -9,10 +9,11 @@ crate-type = ["staticlib"]
 
 [dependencies]
 cxx = "1.0"
-jsonrpc-v2 = "0.11"
+# jsonrpc-v2 = "0.11"
 prost = "0.10"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
+tokio = { version = "1.1", features = ["rt-multi-thread"] }
 tonic = "0.7"
 
 [build-dependencies]
