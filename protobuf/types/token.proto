@@ -1,0 +1,48 @@
+syntax = "proto3";
+message TokenResult {
+  map<string, TokenInfo> id = 1;
+}
+
+message TokenInfo {
+  string symbol = 1;
+  string symbol_key = 2;
+  string name = 3;
+  int64 decimal = 4;
+  int64 limit = 5;
+  bool mintable = 6;
+  bool tradeable = 7;
+  bool is_dat = 8;
+  bool is_lps = 9;
+  bool is_loan_token = 10;
+  bool finalized = 11;
+  int64 minted = 12;
+  string creation_tx = 13;
+  int64 creation_height = 14;
+  string destruction_tx = 15;
+  int64 destruction_height = 16;
+  string collateral_address = 17;
+}
+
+message CreateTokenMetadata {
+  string symbol = 1;
+  string name = 2;
+  bool is_dat = 3;
+  bool mintable = 4;
+  bool tradeable = 5;
+  string collateral_address = 6;
+}
+
+message UpdateTokenMetadata {
+  string symbol = 1;
+  string name = 2;
+  bool is_dat = 3;
+  bool mintable = 4;
+  bool tradeable = 5;
+  bool finalize = 6;
+}
+
+message TokenPagination {
+  int32 start = 1;
+  bool including_start = 2;
+  int32 limit = 3;
+}

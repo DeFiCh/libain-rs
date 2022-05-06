@@ -1,0 +1,146 @@
+syntax = "proto3";
+
+message ICXOrder {
+  string token_from = 1;
+  string chain_from = 2;
+  string chain_to = 3;
+  string token_to = 4;
+  string owner_address = 5;
+  string receive_pubkey = 6;
+  int64 amount_from = 7;
+  int64 order_price = 8;
+  int32 expiry = 9;
+}
+
+message ICXGenericResult {
+  string warning = 1;
+  string txid = 2;
+}
+
+message ICXOffer {
+  string order_tx = 1;
+  int64 amount = 2;
+  string owner_address = 3;
+  string receive_pubkey = 4;
+  int32 expiry = 5;
+}
+
+message HTLC {
+  string offer_tx = 1;
+  int64 amount = 2;
+  string hash = 3;
+  int32 timeout = 4;
+}
+
+message ExtHTLC {
+  string offer_tx = 1;
+  int64 amount = 2;
+  string htlc_script_address = 3;
+  string hash = 4;
+  string owner_pubkey = 5;
+  int32 timeout = 6;
+}
+
+message ICXOrderInfo {
+  ICXOrderStatus status = 1;
+  ICXOrderType type = 2;
+  string token_from = 3;
+  string chain_to = 4;
+  string receive_pubkey = 5;
+  string chain_from = 6;
+  string token_to = 7;
+  string owner_address = 8;
+  int64 amount_from = 9;
+  int64 amount_to_fill = 10;
+  int64 order_price = 11;
+  int64 amount_to_fill_in_to_asset = 12;
+  int64 height = 13;
+  int64 expire_height = 14;
+  int64 close_height = 15;
+  string close_tx = 16;
+  bool expired = 17;
+}
+
+enum ICXOrderStatus {
+  OPEN = 0;
+  CLOSED = 1;
+  FILLED = 2;
+  EXPIRED = 5;
+}
+
+enum ICXOrderType {
+  INTERNAL = 0;
+  EXTERNAL = 1;
+}
+
+enum ICXHTLCType {
+  CLAIM_DFC = 0;
+  DFC = 1;
+  EXTERNAL = 2;
+}
+
+enum ICXHTLCStatus {
+  OPEN = 0;
+  CLAIMED = 1;
+  EXPIRED = 2;
+  REFUNDED = 3;
+  CLOSED = 4;
+}
+
+message ICXOfferInfo {
+  string order_tx = 1;
+  ICXOrderStatus status = 2;
+  int64 amount = 3;
+  int64 amount_in_from_asset = 4;
+  string owner_address = 5;
+  string receive_pubkey = 6;
+  int64 taker_fee = 7;
+  int64 expire_height = 8;
+}
+
+message ICXListOrderOptions {
+  string token = 1;
+  string chain = 2;
+  string order_tx = 3;
+  int32 limit = 4;
+  bool closed = 5;
+}
+
+message ICXListHTLCOptions {
+  string offer_tx = 1;
+  int32 limit = 2;
+  bool closed = 3;
+}
+
+message ICXClaimDFCHTLCInfo {
+  ICXHTLCType type = 1;
+  string dfchtlc_tx = 2;
+  string seed = 3;
+  int64 height = 4;
+}
+
+message ICXDFCHTLCInfo {
+  ICXHTLCType type = 1;
+  ICXHTLCStatus status = 2;
+  string offer_tx = 3;
+  int64 amount = 4;
+  int64 amount_in_ext_asset = 5;
+  string hash = 6;
+  int64 timeout = 7;
+  int64 height = 8;
+  int64 refund_height = 9;
+}
+
+message ICXEXTHTLCInfo {
+  ICXHTLCType type = 1;
+  ICXHTLCStatus status = 2;
+  string offer_tx = 3;
+  int64 amount = 4;
+  int64 amount_in_dfc_asset = 5;
+  string hash = 6;
+  string htlc_script_address = 7;
+  string owner_pubkey = 8;
+  int64 timeout = 9;
+  int64 height = 10;
+}
+

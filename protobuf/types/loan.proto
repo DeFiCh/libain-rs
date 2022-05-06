@@ -1,0 +1,129 @@
+syntax = "proto3";
+message CreateLoanScheme {
+  int32 min_col_ratio = 1;
+  int64 interest_rate = 2;
+  string id = 3;
+}
+
+message UpdateLoanScheme {
+  int32 min_col_ratio = 1;
+  int64 interest_rate = 2;
+  string id = 3;
+  int32 activate_after_block = 4;
+}
+
+message DestroyLoanScheme {
+  string id = 1;
+  int32 activate_after_block = 2;
+}
+
+message LoanSchemeResult {
+  string id = 1;
+  int64 mincolratio = 2;
+  int64 interestrate = 3;
+  bool default = 4;
+}
+
+message SetCollateralToken {
+  string token = 1;
+  int64 factor = 2;
+  string fixed_interval_price_id = 3;
+  int32 activate_after_block = 4;
+}
+
+message GetLoanSchemeResult {
+  string id = 1;
+  int64 interestrate = 2;
+  int64 mincolratio = 3;
+  bool default = 4;
+}
+
+message ListCollateralTokens {
+  int32 height = 1;
+  bool all = 2;
+}
+
+message CollateralTokenDetail {
+  string token = 1;
+  int64 factor = 2;
+  string fixed_interval_price_id = 3;
+  int64 activate_after_block = 4;
+  string token_id = 5;
+}
+
+message SetLoanToken {
+  string symbol = 1;
+  string name = 2;
+  string fixed_interval_price_id = 3;
+  bool mintable = 4;
+  int64 interest = 5;
+}
+
+message LoanTokenResult {
+  TokenResult token = 1;
+  string fixed_interval_price_id = 2;
+  int64 interest = 3;
+}
+
+message LoanConfig {
+  int64 fixed_interval_blocks = 1;
+  int64 max_price_deviation_pct = 2;
+  int64 min_oracles_per_price = 3;
+  string scheme = 4;
+}
+
+message LoanSummary {
+  int64 collateral_tokens = 1;
+  int64 collateral_value = 2;
+  int64 loan_tokens = 3;
+  int64 loan_value = 4;
+  int64 open_auctions = 5;
+  int64 open_vaults = 6;
+  int64 schemes = 7;
+}
+
+message GetLoanInfoResult {
+  int64 current_price_block = 1;
+  int64 next_price_block = 2;
+  LoanConfig defaults = 3;
+  LoanSummary totals = 4;
+}
+
+message UpdateLoanToken {
+  string symbol = 1;
+  string name = 2;
+  string fixed_interval_price_id = 3;
+  bool mintable = 4;
+  int64 interest = 5;
+}
+
+message Interest {
+  string token = 1;
+  int64 realized_interest_per_block = 2;
+  int64 total_interest = 3;
+  int64 interest_per_block = 4;
+}
+
+message TakeLoanMetadata {
+  string vault_id = 1;
+  repeated string amounts = 2;
+  string to = 3;
+}
+
+message PaybackLoanMetadata {
+  string vault_id = 1;
+  repeated string amounts = 2;
+  string from = 3;
+}
+
+message TokenPaybackAmount {
+  string d_token = 1;
+  repeated string amounts = 2;
+}
+
+message PaybackLoanMetadataV2 {
+  string vault_id = 1;
+  string from = 2;
+  repeated TokenPaybackAmount loans = 3;
+}
+

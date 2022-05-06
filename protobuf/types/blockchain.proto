@@ -1,0 +1,221 @@
+syntax = "proto3";
+
+enum Chain {
+  MAIN = 0;
+  TEST = 1;
+  REGTEST = 2;
+}
+enum SoftforksType {
+    BURIED = 0;
+    BIP9 = 1;
+}
+message BlockchainInfo {
+  Chain chain = 1;
+  int32 blocks = 2;
+  int32 headers = 3;
+  string bestblockhash = 4;
+  int32 difficulty = 5;
+  int32 mediantime = 6;
+  int32 verificationprogress = 7;
+  bool initialblockdownload = 8;
+  string chainwork = 9;
+  int32 size_on_disk = 10;
+  bool pruned = 11;
+  message Softforks {
+    SoftforksType type = 1;
+    bool active = 2;
+    int32 height = 3;
+  }
+  map<string, Softforks> softforks = 12;
+  string warnings = 13;
+}
+
+message Block {
+  string hash = 1;
+  int32 confirmations = 2;
+  int32 strippedsize = 3;
+  int32 size = 4;
+  int32 weight = 5;
+  int32 height = 6;
+  string masternode = 7;
+  string minter = 8;
+  int32 minted_blocks = 9;
+  string stake_modifier = 10;
+  int32 version = 11;
+  string version_hex = 12;
+  string merkleroot = 13;
+  int32 time = 14;
+  int32 mediantime = 15;
+  string bits = 16;
+  int32 difficulty = 17;
+  string chainwork = 18;
+  repeated string tx = 19; // Fix Me
+  int32 n_tx = 20;
+  string previousblockhash = 21;
+  string nextblockhash = 22;
+}
+
+message BlockHeader {
+  string hash = 1;
+  int32 confirmations = 2;
+  int32 height = 3;
+  int32 version = 4;
+  string version_hex = 5;
+  string merkleroot = 6;
+  int32 time = 7;
+  int32 mediantime = 8;
+  string bits = 9;
+  int32 difficulty = 10;
+  string chainwork = 11;
+  int32 n_tx = 12;
+  string previousblockhash = 13;
+  string nextblockhash = 14;
+}
+
+message Transaction {
+  string txid = 1;
+  string hash = 2;
+  int32 version = 3;
+  int32 size = 4;
+  int32 vsize = 5;
+  int32 weight = 6;
+  int32 locktime = 7;
+  repeated Vin vin = 8;
+  repeated Vout vout = 9;
+  string hex = 10;
+}
+
+message ScriptSig {
+  string asm = 1;
+  string hex = 2;
+}
+
+message Vin {
+  string coinbase = 1;
+  string txid = 2;
+  int32 vout = 3;
+  ScriptSig scriptSig = 4;
+  repeated string txinwitness = 5;
+  string sequence = 6;
+}
+
+message Vout {
+  int64 value = 1;
+  int32 n = 2;
+  ScriptPubKey script_pub_key = 3;
+  int32 token_id = 4;
+}
+
+message UTXODetails {
+  string bestblock = 1;
+  int32 confirmations = 2;
+  int64 value = 3;
+  ScriptPubKey script_pub_key = 4;
+  bool coinbase = 5;
+}
+
+message ScriptPubKey {
+  string asm = 1;
+  string hex = 2;
+  string type = 3;
+  int32 req_sigs = 4;
+  repeated string addresses = 5;
+}
+
+message ChainTip {
+  int32 height = 1;
+  string hash = 2;
+  int32 branchlen = 3;
+  string status = 4;
+}
+
+message MempoolTxInnerFees {
+  int64 base = 1;
+  int64 modified = 2;
+  int64 ancestor = 3;
+  int64 descendant = 4;
+}
+
+message MempoolTxValue {
+  int64 vsize = 1;
+  int64 size = 2;
+  int64 weight = 3;
+  int64 fee = 4;
+  int64 modifiedfee = 5;
+  int64 time = 6;
+  int64 height = 7;
+  int64 descendantcount = 8;
+  int64 descendantsize = 9;
+  int64 descendantfees = 10;
+  int64 ancestorcount = 11;
+  int64 ancestorsize = 12;
+  int64 ancestorfees = 13;
+  string wtxid = 14;
+  MempoolTxInnerFees fees = 15;
+  repeated string depends = 16;
+  repeated string spentby = 17;
+  bool bip_125_replaceable = 18;
+}
+
+message MempoolTx {
+  map<string, MempoolTxValue> key = 1;
+}
+
+message BlockStats {
+  int32 avgfee = 1;
+  int32 avgfeerate = 2;
+  int32 avgtxsize = 3;
+  string blockhash = 4;
+  int32 height = 5;
+  int32 ins = 6;
+  int32 maxfee = 7;
+  int32 maxfeerate = 8;
+  int32 maxtxsize = 9;
+  int32 medianfee = 10;
+  int32 mediantime = 11;
+  int32 mediantxsize = 12;
+  int32 minfee = 13;
+  int32 minfeerate = 14;
+  int32 mintxsize = 15;
+  int32 outs = 16;
+  int32 subsidy = 17;
+  int32 swtxs = 18;
+  int32 time = 19;
+  int32 totalfee = 20;
+  int32 txs = 21;
+  int32 swtotal_size = 22;
+  int32 swtotal_weight = 23;
+  int32 total_out = 24;
+  int32 total_size = 25;
+  int32 total_weight = 26;
+  int32 utxo_increase = 27;
+  int32 utxo_size_inc = 28;
+  repeated int32 feerate_percentiles = 29;
+}
+
+message MempoolInfo {
+  bool loaded = 1;
+  int32 size = 2;
+  int32 bytes = 3;
+  int32 usage = 4;
+  int32 maxmempool = 5;
+  int64 mempoolminfee = 6;
+  int64 minrelaytxfee = 7;
+}
+
+message WaitBlockResult {
+  string hash = 1;
+  int32 height = 2;
+}
+
+message ChainTxStats {
+  int32 time = 1;
+  int32 txcount = 2;
+  string window_final_block_hash = 3;
+  int32 window_final_block_height = 4;
+  int32 window_block_count = 5;
+  int32 window_tx_count = 6;
+  int32 window_interval = 7;
+  int32 txrate = 8;
+}
+

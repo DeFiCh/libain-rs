@@ -1,0 +1,56 @@
+ syntax = "proto3";
+ enum MasterNodeState{
+   PRE_ENABLED = 0; 
+   ENABLED = 1;
+   PRE_RESIGNED = 2;
+   RESIGNED = 3;
+   PRE_BANNED = 4;
+   BANNED = 5;
+}
+
+message MintingInfo {
+  int32 blocks = 1;
+  int32 currentblockweight = 2;
+  int32 currentblocktx = 3;
+  string difficulty = 4;
+  bool isoperator = 5;
+  string masternodeid = 6;
+  string masternodeoperator = 7;
+  MasterNodeState masternodestate = 8;
+  bool generate = 9;
+  int32 mintedblocks = 10;
+  int32 networkhashps = 11;
+  int32 pooledtx = 12;
+  Chain chain = 13;
+  string warnings = 14;
+}
+
+message MiningInfo {
+  int32 blocks = 1;
+  int32 currentblockweight = 2;
+  int32 currentblocktx = 3;
+  string difficulty = 4;
+  bool isoperator = 5;
+  repeated MasternodeInfo masternodes = 6;
+  int32 networkhashps = 7;
+  int32 pooledtx = 8;
+  Chain chain = 9;
+  string warnings = 10;
+}
+
+message MasternodeInfo {
+  string id = 1;
+  string operator = 2;
+  string state = 3;
+  bool generate = 4;
+  int32 mintedblocks = 5;
+  string lastblockcreationattempt = 6;
+  int32 target_multiplier = 7;
+}
+
+message SmartFeeEstimation {
+  int32 feerate = 1;
+  repeated string errors = 2;
+  int32 blocks = 3;
+}
+

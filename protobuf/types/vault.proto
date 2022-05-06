@@ -1,0 +1,125 @@
+syntax = "proto3";
+message CreateVault {
+  string owner_address = 1;
+  string loan_scheme_id = 2;
+}
+
+message UpdateVault {
+  string owner_address = 1;
+  string loan_scheme_id = 2;
+}
+enum VaultState {
+  UNKNOWN = 0;
+  ACTIVE = 1;
+  IN_LIQUIDATION = 2;
+  FROZEN = 3;
+  MAY_LIQUIDATE = 4;
+}
+
+message Vault {
+  string vault_id = 1;
+  string loan_scheme_id = 2;
+  string owner_address = 3;
+  VaultState state = 4;
+}
+
+message VaultActive {
+  repeated string collateral_amounts = 1;
+  repeated string loan_amounts = 2;
+  repeated string interest_amounts = 3;
+  int64 collateral_value = 4;
+  int64 loan_value = 5;
+  int64 interest_value = 6;
+  int32 collateral_ratio = 7;
+  int64 informative_ratio = 8;
+}
+
+message VaultLiquidation {
+  int32 liquidation_height = 1;
+  int32 liquidation_penalty = 2;
+  int32 batch_count = 3;
+  repeated VaultLiquidationBatch batches = 4;
+}
+
+message DepositVault {
+  string vault_id = 1;
+  string from = 2;
+  string amount = 3;
+}
+
+message WithdrawVault {
+  string vault_id = 1;
+  string to = 2;
+  string amount = 3;
+}
+
+message VaultPagination {
+  string start = 1;
+  bool including_start = 2;
+  int32 limit = 3;
+}
+
+message ListVaultOptions {
+  string owner_address = 1;
+  string loan_scheme_id = 2;
+  VaultState state = 3;
+  bool verbose = 4;
+}
+
+message CloseVault {
+  string vault_id = 1;
+  string to = 2;
+}
+
+message PlaceAuctionBid {
+  string vault_id = 1;
+  int32 index = 2;
+  string from = 3;
+  string amount = 4;
+}
+
+message AuctionPagination {
+  AuctionPaginationStart start = 1;
+  bool including_start = 2;
+  int32 limit = 3;
+}
+
+message AuctionPaginationStart {
+  string vault_id = 1;
+  int32 height = 2;
+}
+
+message VaultLiquidationBatch {
+  int32 index = 1;
+  repeated string collaterals = 2;
+  string loan = 3;
+  HighestBid highest_bid = 4;
+}
+
+message HighestBid {
+  string amount = 1;
+  string owner = 2;
+}
+
+message ListAuctionHistoryPagination {
+  int32 max_block_height = 1;
+  string vault_id = 2;
+  int32 index = 3;
+  int32 limit = 4;
+}
+
+message ListAuctionHistoryDetail {
+  string winner = 1;
+  int32 block_height = 2;
+  string block_hash = 3;
+  int32 block_time = 4;
+  string vault_id = 5;
+  int32 batch_index = 6;
+  string auction_bid = 7;
+  repeated string auction_won = 8;
+}
+
+message TokenPercentageSplit {
+  map<string, int32> token = 0;
+}
+

@@ -1,0 +1,127 @@
+syntax = "proto3";
+message ReceivedByAddressInfo {
+  string address = 1;
+  string type = 2;
+  int64 amount = 3;
+  int32 confirmations = 4;
+  repeated string txids = 5;
+}
+
+message SpvDefaultOptions {
+  int64 fee_rate = 1;
+}
+
+message SendMessageResult {
+  string txid = 1;
+  string sendmessage = 2;
+}
+
+message CreateHtlcOptions {
+  string timeout = 1;
+  string seedhash = 2;
+}
+
+message CreateHtlcResult {
+  string address = 1;
+  string redeem_script = 2;
+  string seed = 3;
+  string seedhash = 4;
+}
+
+message DecodeHtlcResult {
+  string sellerkey = 1;
+  string buyerkey = 2;
+  int32 blocks = 3;
+  string hash = 4;
+}
+
+message ClaimHtlcOptions {
+  string seed = 1;
+  int64 fee_rate = 2;
+}
+
+message SpentInfo {
+  string txid = 1;
+  int32 confirms = 2;
+}
+
+message ListHtlcsOutputsResult {
+  string txid = 1;
+  int32 vout = 2;
+  int64 amount = 3;
+  string address = 4;
+  int32 confirms = 5;
+  SpentInfo spent = 6;
+}
+
+message ListAnchorRewardConfirmsResult {
+  int32 btc_tx_height = 1;
+  string btc_tx_hash = 2;
+  int32 anchor_height = 3;
+  string dfi_block_hash = 4;
+  int32 prev_anchor_height = 5;
+  string reward_address = 6;
+  string confirm_sign_hash = 7;
+  int32 signers = 8;
+}
+
+message ListAnchorRewardsResult {
+  string anchor_tx_hash = 1;
+  string reward_tx_hash = 2;
+}
+
+message CreateAnchorInput {
+  string txid = 1;
+  int32 vout = 2;
+  int32 amount = 3;
+  string privkey = 4;
+}
+
+message CreateAnchorOptions {
+  bool send = 1;
+  int32 feerate = 2;
+}
+
+message CreateAnchorResult {
+  string tx_hex = 1;
+  string tx_hash = 2;
+  string defi_hash = 3;
+  int32 defi_height = 4;
+  int64 estimated_reward = 5;
+  int64 cost = 6;
+  int32 send_result = 7;
+  string send_message = 8;
+}
+
+message ListAnchorsOptions {
+  int32 min_btc_height = 1;
+  int32 max_btc_height = 2;
+  int32 min_confs = 3;
+  int32 max_confs = 4;
+  int32 start_btc_height = 5;
+  int32 limit = 6;
+}
+
+message ListAnchorsResult {
+  int32 btc_block_height = 1;
+  string btc_block_hash = 2;
+  string btc_tx_hash = 3;
+  string previous_anchor = 4;
+  int32 defi_block_height = 5;
+  string defi_block_hash = 6;
+  string reward_address = 7;
+  int32 confirmations = 8;
+  int32 signatures = 9;
+  bool active = 10;
+  int32 anchor_creation_height = 11;
+}
+
+message ListAnchorAuthsResult {
+  string previous_anchor = 1;
+  int32 block_height = 2;
+  string block_hash = 3;
+  int32 creation_height = 4;
+  int32 signers = 5;
+  repeated string signees = 6;
+}
+

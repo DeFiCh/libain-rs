@@ -1,0 +1,64 @@
+syntax = "proto3";
+
+message PeerInfo {
+  int32 id = 1;
+  string addr = 2;
+  string addrbind = 3;
+  string addrlocal = 4;
+  string services = 5;
+  bool relaytxes = 6;
+  int32 lastsend = 7;
+  int32 lastrecv = 8;
+  int32 bytessent = 9;
+  int32 bytesrecv = 10;
+  int32 conntime = 11;
+  int32 timeoffset = 12;
+  int32 pingtime = 13;
+  int32 minping = 14;
+  int32 pingwait = 15;
+  int32 version = 16;
+  string subver = 17;
+  bool inbound = 18;
+  bool addnode = 19;
+  int32 startingheight = 20;
+  int32 banscore = 21;
+  int32 synced_headers = 22;
+  int32 synced_blocks = 23;
+  repeated int32 inflight = 24;
+  bool whitelisted = 25;
+  repeated string permissions = 26;
+  int32 minfeefilter = 27;
+  map<string, int32> bytessent_per_msg = 28;
+  map<string, int32> bytesrecv_per_msg = 29;
+}
+
+message NetworkInfo {
+  int32 version = 1;
+  string subversion = 2;
+  int32 protocolversion = 3;
+  string localservices = 4;
+  bool localrelay = 5;
+  int32 timeoffset = 6;
+  int32 connections = 7;
+  bool networkactive = 8;
+  repeated Network networks = 9;
+  int32 relayfee = 10;
+  int32 incrementalfee = 11;
+  repeated LocalAddress localaddresses = 12;
+  string warnings = 13;
+}
+
+message Network {
+  string name = 1;
+  bool limited = 2;
+  bool reachable = 3;
+  string proxy = 4;
+  bool proxy_randomize_credentials = 5;
+}
+
+message LocalAddress {
+  string address = 1;
+  int32 port = 2;
+  int32 score = 3;
+}
+

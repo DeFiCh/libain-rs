@@ -1,0 +1,84 @@
+syntax = "proto3";
+message CreatePoolPairMetadata {
+  string token_a = 1;
+  string token_b = 2;
+  int32 commission = 3;
+  bool status = 4;
+  string owner_address = 5;
+  repeated string custom_rewards = 6;
+  string pair_symbol = 7;
+}
+
+
+message UTXO {
+  string txid = 1;
+  int32 vout = 2;
+}
+message PoolPairsResult {
+  map<string, PoolPairInfo> id = 1;
+}
+
+message PoolPairInfo {
+  string symbol = 1;
+  string name = 2;
+  bool status = 3;
+  string id_token_a = 4;
+  string id_token_b = 5;
+  int64 reserve_a = 6;
+  int64 reserve_b = 7;
+  int64 commission = 8;
+  int64 total_liquidity = 9;
+  int64 reserve_a_over_reserve_b = 10;
+  int64 reserve_b_over_reserve_a = 11;
+  bool trade_enabled = 12;
+  string owner_address = 13;
+  int64 block_commission_a = 14;
+  int64 block_commission_b = 15;
+  int64 reward_pct = 16;
+  repeated string custom_rewards = 17;
+  string creation_tx = 18;
+  int64 creation_height = 19;
+}
+
+message PoolSharesResult {
+  map<string, PoolShareInfo> id = 1;
+}
+
+message PoolShareInfo {
+  string pool_id = 1;
+  string owner = 2;
+  int64 percentage = 3;
+  int64 amount = 4;
+  int64 total_liquidity = 5;
+}
+
+message PoolPairPagination {
+  int32 start = 1;
+  bool including_start = 2;
+  int32 limit = 3;
+}
+
+message AddPoolLiquiditySource {
+  message ListString {
+    repeated string address = 1;
+  }
+  map<string, ListString> address = 1;
+}
+
+message PoolLiquidityOptions {
+  repeated UTXO utxos = 1;
+}
+
+message PoolShareOptions {
+  bool is_mine_only = 1;
+}
+
+message PoolSwapMetadata {
+  string from = 1;
+  string token_from = 2;
+  int32 amount_from = 3;
+  string to = 4;
+  string token_to = 5;
+  int32 max_price = 6;
+}
+

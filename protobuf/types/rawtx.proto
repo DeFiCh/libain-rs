@@ -1,0 +1,68 @@
+syntax = "proto3";
+message CreateRawTxOptions {
+  int32 locktime = 1;
+  bool replaceable = 2;
+}
+
+message CreateRawTxIn {
+  string txid = 1;
+  int32 vout = 2;
+  int32 sequence = 3;
+}
+
+message CreateRawTxOut {
+  map<string, int64> address = 0;
+}
+
+message SignRawTxWithKeyOptions {
+  repeated SignRawTxWithKeyPrevTx prev_txs = 1;
+  SigHashType sig_hash_type = 2;
+}
+
+message SignRawTxWithKeyPrevTx {
+  string txid = 1;
+  int32 vout = 2;
+  string script_pub_key = 3;
+  string redeem_script = 4;
+  string witness_script = 5;
+  int64 amount = 6;
+}
+
+message SignRawTxWithKeyResult {
+  string hex = 1;
+  bool complete = 2;
+  repeated SignRawTxWithKeyError errors = 3;
+}
+
+message SignRawTxWithKeyError {
+  string txid = 1;
+  int32 vout = 2;
+  string script_sig = 3;
+  int32 sequence = 4;
+  string error = 5;
+}
+
+message TestMempoolAcceptResult {
+  string txid = 1;
+  bool allowed = 2;
+  string reject_reason = 3;
+}
+
+message RawTransaction {
+  bool in_active_chain = 1;
+  string txid = 2;
+  string hash = 3;
+  int32 version = 4;
+  int32 size = 5;
+  int32 vsize = 6;
+  int32 weight = 7;
+  int32 locktime = 8;
+  repeated Vin vin = 9;
+  repeated Vout vout = 10;
+  string hex = 11;
+  string blockhash = 12;
+  int32 confirmations = 13;
+  int32 time = 14;
+  int32 blocktime = 15;
+}
+

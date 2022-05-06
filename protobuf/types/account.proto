@@ -1,0 +1,189 @@
+syntax = "proto3";
+
+import "masternode.proto";
+
+enum OwnerType {
+  MINE = 0;
+  ALL = 1;
+}
+
+enum DfTxType {
+  MINT_TOKEN = 0;
+  POOL_SWAP = 1;
+  ADD_POOL_LIQUIDITY = 2;
+  REMOVE_POOL_LIQUIDITY = 3;
+  UTXOS_TO_ACCOUNT = 4;
+  ACCOUNT_TO_UTXOS = 5;
+  ACCOUNT_TO_ACCOUNT = 6;
+  ANY_ACCOUNTS_TO_ACCOUNTS = 7;
+  CREATE_MASTERNODE = 8;
+  RESIGN_MASTERNODE = 9;
+  CREATE_TOKEN = 10;
+  UPDATE_TOKEN = 11;
+  UPDATE_TOKEN_ANY = 12;
+  CREATE_POOL_PAIR = 13;
+  UPDATE_POOL_PAIR = 14;
+  SET_GOV_VARIABLE = 15;
+  AUTO_AUTH_PREP = 16;
+  NONE = 17;
+  FUTURE_SWAP_EXECUTION = 18;
+  FUTURE_SWAP_REFUND = 19;
+}
+
+enum SelectionModeType {
+  PIE = 0;
+  CRUMBS = 1;
+  FORWARD = 2;
+}
+
+message AccountPagination {
+  int32 start = 1;
+  bool including_start = 2;
+  int32 limit = 3;
+}
+
+message AccountResult {
+  string key = 1;
+  AccountOwner owner = 2;
+  AccountAmount amount = 3;
+}
+
+message AccountOwner {
+  string asm = 1;
+  string hex = 2;
+  int64 req_sigs = 3;
+  string type = 4;
+  repeated string addresses = 5;
+}
+
+message AccountAmount {
+  map<string, int64> id = 1;
+}
+
+message ListAccountOptions {
+  bool indexed_amounts = 1;
+  bool is_mine_only = 2;
+}
+
+message GetAccountOptions {
+  bool indexed_amounts = 1;
+}
+
+message GetTokenBalancesOptions {
+  bool symbol_lookup = 1;
+}
+
+message BalanceTransferPayload {
+  map<string, string> key = 1;
+}
+
+message BalanceTransferAccountOptions {
+  repeated UTXO utxos = 1;
+}
+
+message AccountHistory {
+  string owner = 1;
+  int32 block_height = 2;
+  string block_hash = 3;
+  int32 block_time = 4;
+  string type = 5;
+  int32 txn = 6;
+  string txid = 7;
+  repeated string amounts = 8;
+}
+
+message AccountHistoryOptions {
+  int32 max_block_height = 1;
+  int32 depth = 2;
+  bool no_rewards = 3;
+  string token = 4;
+  DfTxType txtype = 5;
+  int32 limit = 6;
+  int32 txn = 7;
+}
+
+message AccountHistoryCountOptions {
+  string token = 1;
+  DfTxType txtype = 2;
+  bool no_rewards = 3;
+}
+
+message AddressBalances {
+  message ListOfString {
+      repeated string key = 1;
+  }
+  map<string, ListOfString> key = 1;
+}
+
+message SendTokensOptions {
+  SelectionModeType selection_mode = 1;
+}
+
+message CommunityBalanceData {
+  int64 anchor_reward = 1;
+  int64 incentive_funding = 2;
+  int64 burnt = 3;
+  int64 swap = 4;
+  int64 futures = 5;
+  int64 options = 6;
+  int64 unallocated = 7;
+  int64 unknown = 8;
+}
+
+message BurnHistoryOptions {
+  int32 max_block_height = 1;
+  int32 depth = 2;
+  string token = 3;
+  DfTxType txtype = 4;
+  int32 limit = 5;
+}
+
+message BurnHistory {
+  string owner = 1;
+  int32 block_height = 2;
+  string block_hash = 3;
+  int32 block_time = 4;
+  string type = 5;
+  int32 txn = 6;
+  string txid = 7;
+  repeated string amounts = 8;
+}
+
+message BurnInfo {
+  string address = 1;
+  int64 amount = 2;
+  repeated string tokens = 3;
+  int64 feeburn = 4;
+  int64 emissionburn = 5;
+  int64 auctionburn = 6;
+  int64 paybackburn = 7;
+  repeated string dexfeetokens = 8;
+  int64 dfipaybackfee = 9;
+  repeated string dfipaybacktokens = 10;
+  repeated string paybackfees = 11;
+  repeated string paybacktokens = 12;
+  repeated string dfip_2203 = 13;
+}
+
+message FutureSwap {
+  string address = 1;
+  string amount = 2;
+  string destination = 3;
+}
+
+message GetFutureInfo {
+  string owner = 1;
+  repeated FutureData values = 2;
+}
+
+message FutureData {
+  string source = 1;
+  string destination = 2;
+}
+
+message ListFutureInfo {
+  string owner = 1;
+  string source = 2;
+  string destination = 3;
+}
+

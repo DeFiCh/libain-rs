@@ -1,0 +1,11 @@
+syntax = "proto3";
+message ActiveCommand {
+  string method = 1;
+  int32 duration = 2;
+}
+
+message RpcInfo {
+  repeated ActiveCommand active_commands = 1;
+  string logpath = 2;
+}
+
