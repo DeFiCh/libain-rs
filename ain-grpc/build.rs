@@ -135,7 +135,7 @@ fn modify_codegen(
     codegen.push_str(&ffi_tt.to_string());
     codegen.push_str("\n}\n");
     codegen.push_str(&impl_tt.to_string());
-    for (server_mod, tt) in rpc_tt {
+    for (server_mod, (jrpc_tt, grpc_tt)) in rpc_tt {
         let (server, service, svc_mod, svc_trait) = (
             Ident::new(
                 &format!("{}Server", server_mod.to_pascal_case()),
@@ -160,11 +160,17 @@ fn modify_codegen(
                     pub fn service() -> #svc_mod::#server<#service> {
                         #svc_mod::#server::new(#service)
                     }
+                    #[inline]
+                    pub fn module() -> Result<jsonrpsee::http_server::RpcModule<()>, jsonrpsee_core::Error> {
+                        let mut module = jsonrpsee::http_server::RpcModule::new(());
+                        #jrpc_tt
+                        Ok(module)
+                    }
                 }
 
                 #[tonic::async_trait]
                 impl #svc_mod::#svc_trait for #service {
-                    #tt
+                    #grpc_tt
                 }
             )
             .to_string(),
@@ -201,7 +207,11 @@ fn generate_cxx_glue(tt: TokenStream, target_dir: &Path) {
 fn apply_substitutions(
     file: syn::File,
     methods: HashMap<String, Vec<RPC>>,
-) -> (TokenStream, TokenStream, HashMap<String, TokenStream>) {
+) -> (
+    TokenStream,
+    TokenStream,
+    HashMap<String, (TokenStream, TokenStream)>,
+) {
     let mut map = HashMap::new();
     let mut gen = quote!();
     // Replace prost-specific fields with defaults
@@ -295,7 +305,7 @@ fn apply_substitutions(
 
     let mut rpc = quote!();
     for (mod_name, mod_methods) in methods {
-        let server_mod = calls.entry(mod_name).or_insert(quote!());
+        let server_mod = calls.entry(mod_name).or_insert((quote!(), quote!()));
         for method in mod_methods {
             let (name, name_rs, ivar, ity, oty) = (
                 Ident::new(&method.name, Span::call_site()),
@@ -313,30 +323,57 @@ fn apply_substitutions(
                     Span::call_site(),
                 ),
             );
+            let mut param_ffi = quote!();
             let (input_rs, input_ffi, into_ffi, call_ffi) =
                 if method.input_ty == ".google.protobuf.Empty" {
                     (
                         quote!(&self, _request: tonic::Request<()>),
+                        quote!(result: &mut #oty),
                         quote!(),
-                        quote!(),
-                        quote!(),
+                        quote!(&mut out),
                     )
                 } else {
+                    param_ffi = quote! {
+                        let #ivar = super::types::#ity::default();
+                        let seq = _params.sequence();
+                    };
+                    let type_struct = map.get(&ity.to_string()).unwrap();
+                    match &type_struct.fields {
+                        Fields::Named(ref f) => {
+                            for field in &f.named {
+                                let name = &field.ident;
+                                param_ffi.extend(quote!(
+                                    #ivar.#name = seq.next()?;
+                                ));
+                            }
+                        }
+                        _ => unreachable!(),
+                    }
+
                     (
                         quote!(&self, request: tonic::Request<super::types::#ity>),
                         quote!(#ivar: &mut #ity),
                         quote! { let mut #ivar = request.into_inner().into(); },
-                        quote!(&mut #ivar),
+                        quote!(&mut #ivar, &mut out),
                     )
                 };
             rpc.extend(quote!(
-                fn #name(#input_ffi) -> Result<#oty>;
+                fn #name(#input_ffi) -> Result<()>;
             ));
-            server_mod.extend(quote!(
+            let rpc_name = method.name.to_lowercase();
+            server_mod.0.extend(quote!(
+                module.register_blocking_method(#rpc_name, |_, _params| {
+                    #param_ffi
+                    let mut out = ffi::#oty::default();
+                    ffi::#name(#call_ffi).map(|_| super::types::#oty::from(out)).map_err(|e| jsonrpsee_core::Error::Custom(e.to_string()))
+                })?;
+            ));
+            server_mod.1.extend(quote!(
                 async fn #name_rs(#input_rs) -> Result<tonic::Response<super::types::#oty>, tonic::Status> {
                     let result = tokio::task::spawn_blocking(|| {
+                        let mut out = ffi::#oty::default();
                         #into_ffi
-                        ffi::#name(#call_ffi).map_err(|e| tonic::Status::unknown(e.to_string()))
+                        ffi::#name(#call_ffi).map(|_| out).map_err(|e| tonic::Status::unknown(e.to_string()))
                     }).await
                     .map_err(|e| {
                         tonic::Status::unknown(format!("failed to invoke RPC call: {}", e))

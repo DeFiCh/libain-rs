@@ -36,7 +36,7 @@ message Vin {
 }
 
 message ScriptSig {
-    string asm = 1;
+    // string asm__ = 1;
     string hex = 2;
 }
 
@@ -48,9 +48,9 @@ message Vout {
 }
 
 message PubKey {
-    string asm = 1;
+    // string asm__ = 1;
     string hex = 2;
-    string type = 3;
+    // string type__ = 3;
     string req_sigs = 4;
     repeated string addresses = 5;
 }
