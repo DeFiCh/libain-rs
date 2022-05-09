@@ -9,11 +9,11 @@ message UpdateVault {
   string loan_scheme_id = 2;
 }
 enum VaultState {
-  UNKNOWN = 0;
-  ACTIVE = 1;
-  IN_LIQUIDATION = 2;
-  FROZEN = 3;
-  MAY_LIQUIDATE = 4;
+  VaultState_UNKNOWN = 0;
+  VaultState_ACTIVE = 1;
+  VaultState_IN_LIQUIDATION = 2;
+  VaultState_FROZEN = 3;
+  VaultState_MAY_LIQUIDATE = 4;
 }
 
 message Vault {
@@ -120,6 +120,6 @@ message ListAuctionHistoryDetail {
 }
 
 message TokenPercentageSplit {
-  map<string, int32> token = 0;
+  map<string, int32> token = 1;
 }
 

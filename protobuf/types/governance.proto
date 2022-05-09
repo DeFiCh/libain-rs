@@ -1,40 +1,40 @@
 syntax = "proto3";
 
 enum ProposalType {
-  COMMUNITY_FUND_REQUEST = 0;
-  BLOCK_REWARD_RELLOCATION = 1;
-  VOTE_OF_CONFIDENCE = 2;
+  ProposalType_COMMUNITY_FUND_REQUEST = 0;
+  ProposalType_BLOCK_REWARD_RELLOCATION = 1;
+  ProposalType_VOTE_OF_CONFIDENCE = 2;
 }
 
 enum ProposalStatus {
-  VOTING = 0;
-  REJECTED = 1;
-  COMPLETED = 2;
+  ProposalStatus_VOTING = 0;
+  ProposalStatus_REJECTED = 1;
+  ProposalStatus_COMPLETED = 2;
 }
 
 enum ListProposalsType {
-  CFP = 0;
-  BRP = 1;
-  VOC = 2;
-  ALL = 3;
+  ListProposalsType_CFP = 0;
+  ListProposalsType_BRP = 1;
+  ListProposalsType_VOC = 2;
+  ListProposalsType_ALL = 3;
 }
 
 enum ListProposalsStatus {
-  VOTING = 0;
-  REJECTED = 1;
-  COMPLETED = 2;
-  ALL = 3;
+  ListProposalsStatus_VOTING = 0;
+  ListProposalsStatus_REJECTED = 1;
+  ListProposalsStatus_COMPLETED = 2;
+  ListProposalsStatus_ALL = 3;
 }
 
 enum VoteDecision {
-  YES = 0;
-  NO = 1;
-  NEUTRAL = 2;
+  VoteDecision_YES = 0;
+  VoteDecision_NO = 1;
+  VoteDecision_NEUTRAL = 2;
 }
 
 enum MasternodeType {
-  MINE = 0;
-  ALL = 1;
+  MasternodeType_MINE = 0;
+  MasternodeType_ALL = 1;
 }
 
 message CFPData {

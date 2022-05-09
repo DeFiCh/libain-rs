@@ -1,4 +1,10 @@
 syntax = "proto3";
+import 'types/poolpair.proto';
+
+enum OracleRawPriceState {
+  OracleRawPriceState_LIVE = 0;
+  OracleRawPriceState_EXPIRED = 1;
+}
 message AppointOracleOptions {
   int32 weightage = 1;
   repeated UTXO utxos = 2;

@@ -1,39 +1,39 @@
 syntax = "proto3";
 
-import "masternode.proto";
+import "types/poolpair.proto";
 
 enum OwnerType {
-  MINE = 0;
-  ALL = 1;
+  OwnerType_MINE = 0;
+  OwnerType_ALL = 1;
 }
 
 enum DfTxType {
-  MINT_TOKEN = 0;
-  POOL_SWAP = 1;
-  ADD_POOL_LIQUIDITY = 2;
-  REMOVE_POOL_LIQUIDITY = 3;
+  DfTxType_MINT_TOKEN = 0;
+  DfTxType_POOL_SWAP = 1;
+  DfTxType_ADD_POOL_LIQUIDITY = 2;
+  DfTxType_REMOVE_POOL_LIQUIDITY = 3;
   UTXOS_TO_ACCOUNT = 4;
-  ACCOUNT_TO_UTXOS = 5;
-  ACCOUNT_TO_ACCOUNT = 6;
-  ANY_ACCOUNTS_TO_ACCOUNTS = 7;
-  CREATE_MASTERNODE = 8;
-  RESIGN_MASTERNODE = 9;
-  CREATE_TOKEN = 10;
-  UPDATE_TOKEN = 11;
-  UPDATE_TOKEN_ANY = 12;
-  CREATE_POOL_PAIR = 13;
-  UPDATE_POOL_PAIR = 14;
-  SET_GOV_VARIABLE = 15;
-  AUTO_AUTH_PREP = 16;
-  NONE = 17;
-  FUTURE_SWAP_EXECUTION = 18;
-  FUTURE_SWAP_REFUND = 19;
+  DfTxType_ACCOUNT_TO_UTXOS = 5;
+  DfTxType_ACCOUNT_TO_ACCOUNT = 6;
+  DfTxType_ANY_ACCOUNTS_TO_ACCOUNTS = 7;
+  DfTxType_CREATE_MASTERNODE = 8;
+  DfTxType_RESIGN_MASTERNODE = 9;
+  DfTxType_CREATE_TOKEN = 10;
+  DfTxType_UPDATE_TOKEN = 11;
+  DfTxType_UPDATE_TOKEN_ANY = 12;
+  DfTxType_CREATE_POOL_PAIR = 13;
+  DfTxType_UPDATE_POOL_PAIR = 14;
+  DfTxType_SET_GOV_VARIABLE = 15;
+  DfTxType_AUTO_AUTH_PREP = 16;
+  DfTxType_NONE = 17;
+  DfTxType_FUTURE_SWAP_EXECUTION = 18;
+  DfTxType_FUTURE_SWAP_REFUND = 19;
 }
 
 enum SelectionModeType {
-  PIE = 0;
-  CRUMBS = 1;
-  FORWARD = 2;
+  SelectionModeType_PIE = 0;
+  SelectionModeType_CRUMBS = 1;
+  SelectionModeType_FORWARD = 2;
 }
 
 message AccountPagination {

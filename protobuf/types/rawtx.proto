@@ -1,4 +1,15 @@
 syntax = "proto3";
+import "types/blockchain.proto";
+
+enum SigHashType {
+  SigHashType_ALL = 0;
+  SigHashType_NONE = 1;
+  SigHashType_SINGLE = 2;
+  SigHashType_ALL_ANYONECANPAY = 3;
+  SigHashType_NONE_ANYONECANPAY = 4;
+  SigHashType_SINGLE_ANYONECANPAY = 5;
+}
+
 message CreateRawTxOptions {
   int32 locktime = 1;
   bool replaceable = 2;
@@ -11,7 +22,7 @@ message CreateRawTxIn {
 }
 
 message CreateRawTxOut {
-  map<string, int64> address = 0;
+  map<string, int64> address = 1;
 }
 
 message SignRawTxWithKeyOptions {

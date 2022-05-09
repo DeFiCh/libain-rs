@@ -1,4 +1,46 @@
 syntax = "proto3";
+
+enum Mode {
+  Mode_UNSET = 0;
+  Mode_ECONOMICAL = 1;
+  Mode_CONSERVATIVE = 2;
+}
+
+enum AddressType {
+  AddressType_LEGACY = 0;
+  AddressType_P2SH_SEGWIT = 1;
+  AddressType_BECH32 = 2;
+}
+
+enum ScriptType {
+  ScriptType_NONSTANDARD = 0;
+  ScriptType_PUBKEY = 1;
+  ScriptType_PUBKEYHASH = 2;
+  ScriptType_SCRIPTHASH = 3;
+  ScriptType_MULTISIG = 4;
+  ScriptType_NULLDATA = 5;
+  ScriptType_WITNESS_V0_KEYHASH = 6;
+  ScriptType_WITNESS_UNKNOWN = 7;
+}
+
+enum WalletFlag {
+  WalletFlag_AVOID_REUSE = 0;
+}
+
+enum BIP125 {
+  BIP125_YES = 0;
+  BIP125_NO = 1;
+  BIP125_UNDEFINED = 2;
+}
+
+enum InWalletTransactionCategory {
+  InWalletTransactionCategory_SEND = 0;
+  InWalletTransactionCategory_RECEIVE = 1;
+  InWalletTransactionCategory_GENERATE = 2;
+  InWalletTransactionCategory_IMMATURE = 3;
+  InWalletTransactionCategory_ORPHAN = 4;
+}
+
 message WalletUTXO {
   string txid = 1;
   int32 vout = 2;

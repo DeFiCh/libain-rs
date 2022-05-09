@@ -1,50 +1,51 @@
 syntax = "proto3";
+import "types/poolpair.proto";
 
-enum MasternodeState {
-  PRE_ENABLED = 0;
-  ENABLED = 1;
-  PRE_RESIGNED = 2;
-  RESIGNED = 3;
-  PRE_BANNED = 4;
-  BANNED = 5;
-  UNKNOWN = 6;
+enum MasterNodeState {
+  MasterNodeState_PRE_ENABLED = 0;
+  MasterNodeState_ENABLED = 1;
+  MasterNodeState_PRE_RESIGNED = 2;
+  MasterNodeState_RESIGNED = 3;
+  MasterNodeState_PRE_BANNED = 4;
+  MasterNodeState_BANNED = 5;
+  MasterNodeState_UNKNOWN = 6;
 }
 
-enum MasternodeTimeLock {
-  FIVE_YEAR = 0;
-  TEN_YEAR = 1;
+enum MasterNodeTimeLock {
+  MasterNodeTimeLock_FIVE_YEAR = 0;
+  MasterNodeTimeLock_TEN_YEAR = 1;
 }
 
-message UTXO {
-  string txid = 1;
-  int32 vout = 2;
-}
+/* message UTXO { */
+/*   string txid = 1; */
+/*   int32 vout = 2; */
+/* } */
 
-message CreateMasternodeOptions {
+message CreateMasterNodeOptions {
   repeated UTXO utxos = 1;
-  MasternodeTimeLock timelock = 2;
+  MasterNodeTimeLock timelock = 2;
 }
 
-message MasternodePagination {
+message MasterNodePagination {
   string start = 1;
   bool including_start = 2;
   int32 limit = 3;
 }
 
-message MasternodeBlock {
+message MasterNodeBlock {
   string id = 1;
   string owner_address = 2;
   string operator_address = 3;
 }
 
-message MasternodeInfo {
+message MasterNodeInfo {
   string owner_auth_address = 1;
   string operator_auth_address = 2;
   int32 creation_height = 3;
   int32 resign_height = 4;
   string resign_tx = 5;
   string ban_tx = 6;
-  MasternodeState state = 7;
+  MasterNodeState state = 7;
   int32 minted_blocks = 8;
   bool owner_is_mine = 9;
   bool operator_is_mine = 10;
@@ -54,7 +55,7 @@ message MasternodeInfo {
   int32 timelock = 14;
 }
 
-message MasternodeAnchor {
+message MasterNodeAnchor {
   int32 anchor_height = 1;
   string anchor_hash = 2;
   string reward_address = 3;
@@ -69,7 +70,7 @@ message AnchorTeamResult {
   repeated string confirm = 2;
 }
 
-message MasternodeResult {
+message MasterNodeResult {
   map<string, string> id = 1;
 }
 

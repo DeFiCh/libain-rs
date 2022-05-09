@@ -62,29 +62,29 @@ message ICXOrderInfo {
 }
 
 enum ICXOrderStatus {
-  OPEN = 0;
-  CLOSED = 1;
-  FILLED = 2;
-  EXPIRED = 5;
+  ICXOrderStatus_OPEN = 0;
+  ICXOrderStatus_CLOSED = 1;
+  ICXOrderStatus_FILLED = 2;
+  ICXOrderStatus_EXPIRED = 5;
 }
 
 enum ICXOrderType {
-  INTERNAL = 0;
-  EXTERNAL = 1;
+  ICXOrderType_INTERNAL = 0;
+  ICXOrderType_EXTERNAL = 1;
 }
 
 enum ICXHTLCType {
-  CLAIM_DFC = 0;
-  DFC = 1;
-  EXTERNAL = 2;
+  ICXHTLCType_CLAIM_DFC = 0;
+  ICXHTLCType_DFC = 1;
+  ICXHTLCType_EXTERNAL = 2;
 }
 
 enum ICXHTLCStatus {
-  OPEN = 0;
-  CLAIMED = 1;
-  EXPIRED = 2;
-  REFUNDED = 3;
-  CLOSED = 4;
+  ICXHTLCStatus_OPEN = 0;
+  ICXHTLCStatus_CLAIMED = 1;
+  ICXHTLCStatus_EXPIRED = 2;
+  ICXHTLCStatus_REFUNDED = 3;
+  ICXHTLCStatus_CLOSED = 4;
 }
 
 message ICXOfferInfo {

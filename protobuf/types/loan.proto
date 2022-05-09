@@ -1,4 +1,7 @@
 syntax = "proto3";
+
+/* import "types/token.proto"; */
+
 message CreateLoanScheme {
   int32 min_col_ratio = 1;
   int64 interest_rate = 2;
@@ -59,11 +62,11 @@ message SetLoanToken {
   int64 interest = 5;
 }
 
-message LoanTokenResult {
-  TokenResult token = 1;
-  string fixed_interval_price_id = 2;
-  int64 interest = 3;
-}
+/* message LoanTokenResult { */
+/*   TokenResult token = 1; */
+/*   string fixed_interval_price_id = 2; */
+/*   int64 interest = 3; */
+/* } */
 
 message LoanConfig {
   int64 fixed_interval_blocks = 1;
