@@ -47,6 +47,6 @@ message BlockInput {
 }
 
 message BlockResult {
-    string hex_data = 1; // Hex-encoded data for block hash (for verbosity 0)
+    string hash = 1; // Hex-encoded data for block hash (for verbosity 0)
     Block block = 2; // Block data (for verbosity 1 and 2)
 }

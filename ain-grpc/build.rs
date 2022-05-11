@@ -2,7 +2,8 @@ use heck::{ToPascalCase, ToSnekCase};
 use proc_macro2::{Span, TokenStream};
 use prost_build::{Config, Service, ServiceGenerator};
 use quote::quote;
-use syn::{Fields, GenericArgument, Ident, Item, ItemStruct, PathArguments, Type};
+use regex::Regex;
+use syn::{Attribute, Fields, GenericArgument, Ident, Item, ItemStruct, PathArguments, Type};
 
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -27,15 +28,51 @@ fn visit_files(dir: &Path, f: &mut dyn FnMut(&DirEntry)) -> io::Result<()> {
     Ok(())
 }
 
-// Type-level attributes that need to be added for proto structs (like serde)
-const TYPE_ATTRS: &'static [(&'static str, &'static str)] = &[(
-    ".types",
-    "#[derive(Serialize)] #[serde(rename_all=\"camelCase\")]",
-)];
+struct Attr {
+    matcher: &'static str,         // matcher for names
+    attr: Option<&'static str>,    // attribute to be added to the entity
+    rename: Option<&'static str>,  // whether entity should be renamed
+    skip: &'static [&'static str], // entities that should be skipped
+}
 
-// Field-level attributes that need to be added for proto structs (like serde)
-const FIELD_ATTRS: &'static [(&'static str, &'static str)] = &[
-    // (".blockchain.version_hex", "#[serde(rename = \"versionHex\")]"),
+impl Attr {
+    fn parse(attr: &str) -> Vec<Attribute> {
+        let attr = attr.parse::<TokenStream>().unwrap();
+        // This is an easier way to parse the attributes instead of writing a custom parser
+        let empty_struct: ItemStruct = syn::parse2(quote! {
+            #attr
+            struct S;
+        })
+        .unwrap();
+        empty_struct.attrs
+    }
+
+    fn matches(&self, name: &str) -> bool {
+        let re = Regex::new(self.matcher).unwrap();
+        re.is_match(name) && !self.skip.iter().any(|&n| n == name)
+    }
+}
+
+const TYPE_ATTRS: &'static [Attr] = &[Attr {
+    matcher: ".*",
+    attr: Some("#[derive(Serialize)] #[serde(rename_all=\"camelCase\")]"),
+    rename: None,
+    skip: &["BlockResult", "Transaction"],
+}];
+
+const FIELD_ATTRS: &'static [Attr] = &[
+    Attr {
+        matcher: "asm",
+        attr: Some("#[serde(rename=\"asm\")]"),
+        rename: Some("field_asm"),
+        skip: &[],
+    },
+    Attr {
+        matcher: "type",
+        attr: Some("#[serde(rename=\"type\")]"),
+        rename: Some("field_type"),
+        skip: &[],
+    },
 ];
 
 // Custom generator to collect RPC call signatures
@@ -96,12 +133,6 @@ fn generate_from_protobuf(dir: &Path, out_dir: &Path) -> HashMap<String, Vec<RPC
         let mut config = Config::new();
         config.out_dir(out_dir);
         config.service_generator(Box::new(gen));
-        for (path, attrs) in TYPE_ATTRS {
-            config.type_attribute(path, attrs);
-        }
-        for (path, attrs) in FIELD_ATTRS {
-            config.field_attribute(path, attrs);
-        }
         config
             .compile_protos(&protos, &[dir])
             .expect("compiling protobuf");
@@ -122,7 +153,17 @@ fn modify_codegen(
         .read_to_string(&mut contents)
         .unwrap();
     let parsed_file = syn::parse_file(&contents).unwrap();
-    let (ffi_tt, impl_tt, rpc_tt) = apply_substitutions(parsed_file, methods);
+
+    // Modify structs if needed
+    let (struct_map, structs, ffi_structs) = change_types(parsed_file);
+    contents.clear();
+    contents.push_str(&structs.to_string());
+    File::create(types_path)
+        .unwrap()
+        .write_all(contents.as_bytes())
+        .unwrap();
+
+    let (ffi_tt, impl_tt, rpc_tt) = apply_substitutions(ffi_structs, struct_map, methods);
 
     // Append additional RPC impls next to proto-generated RPC impls
     contents.clear();
@@ -192,28 +233,10 @@ fn modify_codegen(
     codegen.parse().unwrap() // given to cxx codegen
 }
 
-fn generate_cxx_glue(tt: TokenStream, target_dir: &Path) {
-    let codegen = cxx_gen::generate_header_and_cc(tt, &cxx_gen::Opt::default()).unwrap();
-    File::create(target_dir.join("libain.hpp"))
-        .unwrap()
-        .write_all(&codegen.header)
-        .unwrap();
-    File::create(target_dir.join("libain.cpp"))
-        .unwrap()
-        .write_all(&codegen.implementation)
-        .unwrap();
-}
-
-fn apply_substitutions(
-    file: syn::File,
-    methods: HashMap<String, Vec<RPC>>,
-) -> (
-    TokenStream,
-    TokenStream,
-    HashMap<String, (TokenStream, TokenStream)>,
-) {
+fn change_types(file: syn::File) -> (HashMap<String, ItemStruct>, TokenStream, TokenStream) {
     let mut map = HashMap::new();
-    let mut gen = quote!();
+    let mut modified = quote!();
+    let mut copied = quote!();
     // Replace prost-specific fields with defaults
     for item in file.items {
         let mut s = match item {
@@ -221,17 +244,49 @@ fn apply_substitutions(
             _ => continue,
         };
 
-        map.insert(s.ident.to_string(), s.clone());
-        let empty_struct: ItemStruct = syn::parse2(quote! {
-            #[derive(Default)]
-            struct S;
-        })
-        .unwrap();
+        let name = s.ident.to_string();
+        for rule in TYPE_ATTRS {
+            if !rule.matches(&name) {
+                continue;
+            }
 
-        s.attrs = empty_struct.attrs;
+            if let Some(attr) = rule.attr {
+                s.attrs.extend(Attr::parse(attr));
+            }
+
+            if let Some(new_name) = rule.rename {
+                s.ident = Ident::new(new_name, Span::call_site());
+            }
+        }
+
         let fields = match &mut s.fields {
             Fields::Named(ref mut f) => f,
             _ => panic!("unsupported struct"),
+        };
+        for field in &mut fields.named {
+            let name = field.ident.as_ref().unwrap().to_string();
+            for rule in FIELD_ATTRS {
+                if !rule.matches(&name) {
+                    continue;
+                }
+
+                if let Some(attr) = rule.attr {
+                    field.attrs.extend(Attr::parse(attr));
+                }
+
+                if let Some(new_name) = rule.rename {
+                    field.ident = Some(Ident::new(new_name, Span::call_site()));
+                }
+            }
+        }
+
+        modified.extend(quote!(#s));
+        map.insert(s.ident.to_string(), s.clone());
+
+        s.attrs = Attr::parse("#[derive(Default)]");
+        let fields = match &mut s.fields {
+            Fields::Named(ref mut f) => f,
+            _ => unreachable!(),
         };
 
         for field in &mut fields.named {
@@ -239,14 +294,25 @@ fn apply_substitutions(
             fix_type(&mut field.ty);
         }
 
-        gen.extend(quote! {
+        copied.extend(quote! {
             #s
         });
     }
 
+    (map, modified, copied)
+}
+
+fn apply_substitutions(
+    mut gen: TokenStream,
+    map: HashMap<String, ItemStruct>,
+    methods: HashMap<String, Vec<RPC>>,
+) -> (
+    TokenStream,
+    TokenStream,
+    HashMap<String, (TokenStream, TokenStream)>,
+) {
     // FIXME: We don't have to regenerate if the struct only has scalar types
     // (in which case it'll have the same schema in both FFI and protobuf)
-
     let mut impls = quote!();
     let mut calls = HashMap::new();
     for s in map.values() {
@@ -424,6 +490,18 @@ fn get_path_bracketed_ty_simple(ty: &Type) -> Type {
         }
         _ => panic!("unsupported type {}", quote!(#ty)),
     }
+}
+
+fn generate_cxx_glue(tt: TokenStream, target_dir: &Path) {
+    let codegen = cxx_gen::generate_header_and_cc(tt, &cxx_gen::Opt::default()).unwrap();
+    File::create(target_dir.join("libain.hpp"))
+        .unwrap()
+        .write_all(&codegen.header)
+        .unwrap();
+    File::create(target_dir.join("libain.cpp"))
+        .unwrap()
+        .write_all(&codegen.implementation)
+        .unwrap();
 }
 
 fn main() {
