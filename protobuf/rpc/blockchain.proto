@@ -1,0 +1,13 @@
+syntax = "proto3";
+package rpc;
+
+import "google/protobuf/empty.proto";
+import "types/block.proto";
+
+// NOTE: Only retain services here
+
+service Blockchain {
+    // Returns the hash of the best (tip) block in the most-work fully-validated chain.
+    rpc GetBestBlockHash(google.protobuf.Empty) returns (types.BlockResult);
+    // rpc GetBlock(types.BlockInput) returns (types.BlockResult);
+}
