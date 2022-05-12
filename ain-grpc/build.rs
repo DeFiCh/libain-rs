@@ -53,14 +53,14 @@ impl Attr {
     }
 }
 
-const TYPE_ATTRS: &'static [Attr] = &[Attr {
+const TYPE_ATTRS: &[Attr] = &[Attr {
     matcher: ".*",
     attr: Some("#[derive(Serialize)] #[serde(rename_all=\"camelCase\")]"),
     rename: None,
     skip: &["BlockResult", "Transaction"],
 }];
 
-const FIELD_ATTRS: &'static [Attr] = &[
+const FIELD_ATTRS: &[Attr] = &[
     Attr {
         matcher: "asm",
         attr: Some("#[serde(rename=\"asm\")]"),
@@ -77,12 +77,12 @@ const FIELD_ATTRS: &'static [Attr] = &[
 
 // Custom generator to collect RPC call signatures
 struct WrappedGenerator {
-    methods: Rc<RefCell<HashMap<String, Vec<RPC>>>>,
+    methods: Rc<RefCell<HashMap<String, Vec<Rpc>>>>,
     inner: Box<dyn ServiceGenerator>,
 }
 
 #[derive(Debug)]
-struct RPC {
+struct Rpc {
     name: String,
     input_ty: String,
     output_ty: String,
@@ -93,7 +93,7 @@ impl ServiceGenerator for WrappedGenerator {
         for method in &service.methods {
             let mut ref_map = self.methods.borrow_mut();
             let vec = ref_map.entry(service.name.clone()).or_insert(vec![]);
-            vec.push(RPC {
+            vec.push(Rpc {
                 name: method.proto_name.clone(),
                 input_ty: method.input_proto_type.clone(),
                 output_ty: method.output_proto_type.clone(),
@@ -107,7 +107,7 @@ impl ServiceGenerator for WrappedGenerator {
     }
 }
 
-fn generate_from_protobuf(dir: &Path, out_dir: &Path) -> HashMap<String, Vec<RPC>> {
+fn generate_from_protobuf(dir: &Path, out_dir: &Path) -> HashMap<String, Vec<Rpc>> {
     let methods = Rc::new(RefCell::new(HashMap::new()));
     let gen = WrappedGenerator {
         methods: methods.clone(),
@@ -117,7 +117,7 @@ fn generate_from_protobuf(dir: &Path, out_dir: &Path) -> HashMap<String, Vec<RPC
     };
 
     let mut protos = vec![];
-    visit_files(&dir, &mut |entry: &DirEntry| {
+    visit_files(dir, &mut |entry: &DirEntry| {
         let path = entry.path();
         let file_name = path.file_name().unwrap().to_str().unwrap();
         if file_name.ends_with(".proto") {
@@ -142,7 +142,7 @@ fn generate_from_protobuf(dir: &Path, out_dir: &Path) -> HashMap<String, Vec<RPC
 }
 
 fn modify_codegen(
-    methods: HashMap<String, Vec<RPC>>,
+    methods: HashMap<String, Vec<Rpc>>,
     types_path: &Path,
     rpc_path: &Path,
     lib_path: &Path,
@@ -305,7 +305,7 @@ fn change_types(file: syn::File) -> (HashMap<String, ItemStruct>, TokenStream, T
 fn apply_substitutions(
     mut gen: TokenStream,
     map: HashMap<String, ItemStruct>,
-    methods: HashMap<String, Vec<RPC>>,
+    methods: HashMap<String, Vec<Rpc>>,
 ) -> (
     TokenStream,
     TokenStream,
@@ -326,7 +326,7 @@ fn apply_substitutions(
         for field in &fields.named {
             let name = &field.ident;
             let ty = &field.ty;
-            let t = quote!(#ty).to_string().replace(" ", "");
+            let t = quote!(#ty).to_string().replace(' ', "");
             let (into_rs, into_ffi) = if t.contains("::core::option::") {
                 (
                     quote!(Some(other.#name.into())),
@@ -377,15 +377,15 @@ fn apply_substitutions(
                 Ident::new(&method.name, Span::call_site()),
                 Ident::new(&method.name.to_snek_case(), Span::call_site()),
                 Ident::new(
-                    &method.input_ty.split(".").last().unwrap().to_snek_case(),
+                    &method.input_ty.split('.').last().unwrap().to_snek_case(),
                     Span::call_site(),
                 ),
                 Ident::new(
-                    &method.input_ty.split(".").last().unwrap(),
+                    method.input_ty.split('.').last().unwrap(),
                     Span::call_site(),
                 ),
                 Ident::new(
-                    &method.output_ty.split(".").last().unwrap(),
+                    method.output_ty.split('.').last().unwrap(),
                     Span::call_site(),
                 ),
             );
@@ -460,17 +460,17 @@ fn apply_substitutions(
 }
 
 fn fix_type(ty: &mut Type) {
-    let t = quote!(#ty).to_string().replace(" ", "");
+    let t = quote!(#ty).to_string().replace(' ', "");
     if t.contains("::prost::alloc::string::") {
         *ty = syn::parse2(quote!(String)).unwrap();
     }
     if t.contains("::prost::alloc::vec::") {
-        let mut inner = get_path_bracketed_ty_simple(&ty);
+        let mut inner = get_path_bracketed_ty_simple(ty);
         fix_type(&mut inner);
         *ty = syn::parse2(quote!(Vec<#inner>)).unwrap();
     }
     if t.contains("::core::option::") {
-        *ty = get_path_bracketed_ty_simple(&ty);
+        *ty = get_path_bracketed_ty_simple(ty);
     }
 }
 
@@ -481,10 +481,10 @@ fn get_path_bracketed_ty_simple(ty: &Type) -> Type {
             let last = p.path.segments.last().unwrap();
             match &last.arguments {
                 PathArguments::AngleBracketed(ref a) => match a.args.first().unwrap() {
-                    GenericArgument::Type(ref t) => return t.clone(),
+                    GenericArgument::Type(ref t) => t.clone(),
                     _ => panic!("unsupported generic type: {}", quote!(#ty)),
                 },
-                PathArguments::None => return ty.clone(),
+                PathArguments::None => ty.clone(),
                 _ => panic!("parenthesis type {} not supported", quote!(#ty)),
             }
         }
