@@ -3,7 +3,9 @@ use proc_macro2::{Span, TokenStream};
 use prost_build::{Config, Service, ServiceGenerator};
 use quote::quote;
 use regex::Regex;
-use syn::{Attribute, Fields, GenericArgument, Ident, Item, ItemStruct, PathArguments, Type};
+use syn::{
+    Attribute, Field, Fields, GenericArgument, Ident, Item, ItemStruct, PathArguments, Type,
+};
 
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -53,12 +55,20 @@ impl Attr {
     }
 }
 
-const TYPE_ATTRS: &[Attr] = &[Attr {
-    matcher: ".*",
-    attr: Some("#[derive(Serialize)] #[serde(rename_all=\"camelCase\")]"),
-    rename: None,
-    skip: &["BlockResult", "Transaction"],
-}];
+const TYPE_ATTRS: &[Attr] = &[
+    Attr {
+        matcher: ".*",
+        attr: Some("#[derive(Serialize)] #[serde(rename_all=\"camelCase\")]"),
+        rename: None,
+        skip: &["BlockResult", "Transaction"],
+    },
+    Attr {
+        matcher: "BlockInput",
+        attr: Some("#[derive(Deserialize)]"),
+        rename: None,
+        skip: &[],
+    },
+];
 
 const FIELD_ATTRS: &[Attr] = &[
     Attr {
@@ -264,9 +274,9 @@ fn change_types(file: syn::File) -> (HashMap<String, ItemStruct>, TokenStream, T
             _ => panic!("unsupported struct"),
         };
         for field in &mut fields.named {
-            let name = field.ident.as_ref().unwrap().to_string();
+            let f_name = field.ident.as_ref().unwrap().to_string();
             for rule in FIELD_ATTRS {
-                if !rule.matches(&name) {
+                if !rule.matches(&f_name) {
                     continue;
                 }
 
@@ -400,27 +410,42 @@ fn apply_substitutions(
                     )
                 } else {
                     param_ffi = quote! {
-                        let #ivar = super::types::#ity::default();
-                        let seq = _params.sequence();
+                        let mut #ivar = super::types::#ity::default();
                     };
-                    let type_struct = map.get(&ity.to_string()).unwrap();
+                    let struct_name = ity.to_string();
+                    let type_struct = map.get(&struct_name).unwrap();
                     match &type_struct.fields {
                         Fields::Named(ref f) => {
+                            let mut extract_fields = quote!();
                             for field in &f.named {
                                 let name = &field.ident;
-                                param_ffi.extend(quote!(
-                                    #ivar.#name = seq.next()?;
+                                let seq_extract = if let Some(value) = extract_default(field) {
+                                    quote!(seq.next().unwrap_or(#value))
+                                } else {
+                                    quote!(seq.next()?)
+                                };
+                                extract_fields.extend(quote!(
+                                    #ivar.#name = #seq_extract;
                                 ));
                             }
+                            param_ffi.extend(quote!(
+                                if _params.is_object() {
+                                    #ivar = _params.parse()?;
+                                } else {
+                                    let mut seq = _params.sequence();
+                                    #extract_fields
+                                }
+                                let mut input = #ivar.into();
+                            ));
                         }
                         _ => unreachable!(),
                     }
 
                     (
                         quote!(&self, request: tonic::Request<super::types::#ity>),
-                        quote!(#ivar: &mut #ity),
-                        quote! { let mut #ivar = request.into_inner().into(); },
-                        quote!(&mut #ivar, &mut out),
+                        quote!(#ivar: &mut #ity, result: &mut #oty),
+                        quote! { let mut input = request.into_inner().into(); },
+                        quote!(&mut input, &mut out),
                     )
                 };
             rpc.extend(quote!(
@@ -428,7 +453,7 @@ fn apply_substitutions(
             ));
             let rpc_name = method.name.to_lowercase();
             server_mod.0.extend(quote!(
-                module.register_blocking_method(#rpc_name, |_, _params| {
+                module.register_blocking_method(#rpc_name, |_params, _| {
                     #param_ffi
                     let mut out = ffi::#oty::default();
                     ffi::#name(#call_ffi).map(|_| super::types::#oty::from(out)).map_err(|e| jsonrpsee_core::Error::Custom(e.to_string()))
@@ -457,6 +482,23 @@ fn apply_substitutions(
     ));
 
     (gen, impls, calls)
+}
+
+fn extract_default(field: &Field) -> Option<TokenStream> {
+    let re = Regex::new("\\[default: (.*?)\\]").unwrap();
+    for attr in &field.attrs {
+        match attr.path.get_ident() {
+            Some(ident) if ident == "doc" => {
+                let comment = attr.tokens.to_string();
+                if let Some(captures) = re.captures(&comment) {
+                    return captures.get(1).unwrap().as_str().parse().ok();
+                }
+            }
+            _ => (),
+        }
+    }
+
+    None
 }
 
 fn fix_type(ty: &mut Type) {

@@ -42,8 +42,8 @@ message NonUTXO {
 }
 
 message BlockInput {
-    string block_hash = 1;  // Block hash
-    uint32 verbosity = 2; // 0 for hex-encoded data, 1 for a json object, and 2 for json object with transaction data
+    string blockhash = 1; // Block hash
+    uint32 verbosity = 2; // 0 for hex-encoded data, 1 for a json object, and 2 for json object with transaction data [default: 1]
 }
 
 message BlockResult {
