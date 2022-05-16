@@ -58,13 +58,25 @@ impl Attr {
 const TYPE_ATTRS: &[Attr] = &[
     Attr {
         matcher: ".*",
+        attr: Some("#[derive(Debug)]"),
+        rename: None,
+        skip: &[],
+    },
+    Attr {
+        matcher: ".*",
         attr: Some("#[derive(Serialize)] #[serde(rename_all=\"camelCase\")]"),
         rename: None,
-        skip: &["BlockResult", "Transaction"],
+        skip: &["BlockResult", "NonUtxo", "Transaction"],
     },
     Attr {
         matcher: "BlockInput",
         attr: Some("#[derive(Deserialize)]"),
+        rename: None,
+        skip: &[],
+    },
+    Attr {
+        matcher: "NonUtxo",
+        attr: Some("#[derive(Serialize)] #[serde(rename_all=\"PascalCase\")]"),
         rename: None,
         skip: &[],
     },
@@ -81,6 +93,18 @@ const FIELD_ATTRS: &[Attr] = &[
         matcher: "type",
         attr: Some("#[serde(rename=\"type\")]"),
         rename: Some("field_type"),
+        skip: &[],
+    },
+    Attr {
+        matcher: "previous_block_hash",
+        attr: Some("#[serde(rename=\"previousblockhash\")]"),
+        rename: None,
+        skip: &[],
+    },
+    Attr {
+        matcher: "next_block_hash",
+        attr: Some("#[serde(rename=\"nextblockhash\")]"),
+        rename: None,
         skip: &[],
     },
 ];

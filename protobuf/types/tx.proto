@@ -14,7 +14,7 @@ message RawTransaction {
     uint32 size = 5; // The serialized transaction size
     uint32 vsize = 6; // The virtual transaction size (differs from size for witness transactions)
     uint32 weight = 7; // The transaction's weight (between vsize*4-3 and vsize*4)
-    string version = 8; // The transaction version
+    uint32 version = 8; // The transaction version
     uint64 locktime = 9; // The lock time
     repeated Vin vin = 10; // List of inputs
     repeated Vout vout = 11; // List of outputs
@@ -51,6 +51,6 @@ message PubKey {
     string asm = 1;
     string hex = 2;
     string type = 3;
-    string req_sigs = 4;
+    uint32 req_sigs = 4;
     repeated string addresses = 5;
 }
