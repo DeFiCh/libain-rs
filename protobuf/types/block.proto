@@ -5,7 +5,7 @@ import "types/tx.proto";
 
 message Block {
     string hash = 1; // Block hash (same as input, if any)
-    uint64 confirmations = 2; // The number of confirmations, or -1 if the block is not on the main chain
+    int64 confirmations = 2; // The number of confirmations, or -1 if the block is not on the main chain
     uint64 size = 3; // Block size
     uint64 strippedsize = 4; // Block size without witness data
     uint64 weight = 5; // The block weight as defined in BIP 141
@@ -29,7 +29,7 @@ message Block {
     string minter = 102;
     uint64 minted_blocks = 103;
     string stake_modifier = 104;
-    NonUTXO nonutxo = 105;
+    repeated NonUTXO nonutxo = 105;
 }
 
 message NonUTXO {
@@ -42,8 +42,8 @@ message NonUTXO {
 }
 
 message BlockInput {
-    string block_hash = 1;  // Block hash
-    uint32 verbosity = 2; // 0 for hex-encoded data, 1 for a json object, and 2 for json object with transaction data
+    string blockhash = 1; // Block hash
+    uint32 verbosity = 2; // 0 for hex-encoded data, 1 for a json object, and 2 for json object with transaction data [default: 1]
 }
 
 message BlockResult {
