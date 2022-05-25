@@ -58,12 +58,6 @@ impl Attr {
 const TYPE_ATTRS: &[Attr] = &[
     Attr {
         matcher: ".*",
-        attr: Some("#[derive(Debug)]"),
-        rename: None,
-        skip: &[],
-    },
-    Attr {
-        matcher: ".*",
         attr: Some("#[derive(Serialize)] #[serde(rename_all=\"camelCase\")]"),
         rename: None,
         skip: &["BlockResult", "NonUtxo", "Transaction"],
