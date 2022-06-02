@@ -1,0 +1,12 @@
+syntax = "proto3";
+package rpc;
+
+import "google/protobuf/empty.proto";
+import "types/mining.proto";
+
+service Mining {
+    rpc GetNetworkHashPS(types.NetworkHashPSInput) returns (types.NetworkHashPS);
+    rpc GetMiningInfo(google.protobuf.Empty) returns (types.MiningInfo);
+    rpc GetMintingInfo(google.protobuf.Empty) returns (types.MintingInfo);
+    rpc EstimateSmartFee(google.protobuf.Empty) returns (types.SmartFeeEstimation);
+}

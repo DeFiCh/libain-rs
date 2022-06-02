@@ -1,0 +1,71 @@
+syntax = "proto3";
+package types;
+
+import "types/masternode.proto";
+// rpc GetNetworkHashPS(types.NetworkHashPSInput) returns (types.NetworkHashPS);
+message NetworkHashPSInput {
+    uint64 nblocks = 1;
+    int64 height = 2;
+}
+message NetworkHashPS {
+    int64 HashPS = 1;
+}
+
+// rpc GenerateToAddress(types.GenerateToAddressInput) returns (types.MintedBlocksCount);
+message GenerateToAddressInput {
+    uint32 nGenerate = 1;
+    int64 nMaxTries = 2;
+    string encoded_destination = 3;
+}
+
+message MintedBlocksCount {
+    uint64 minted_blocks = 1;
+}
+// rpc GetMiningInfo(google.protobuf.Empty) returns (types.MiningInfo);
+
+message MiningInfo {
+    int32 blocks = 1;
+    int32 currentblockweight = 2;
+    int32 currentblocktx = 3;
+    string difficulty = 4;
+    bool isoperator = 5;
+    repeated MasterNodeInfo masternodes = 6;
+    int32 networkhashps = 7;
+    int32 pooledtx = 8;
+    // Chain chain = 9;
+    string warnings = 10;
+}
+// rpc GetMintingInfo(google.protobuf.Empty) returns (types.MintingInfo);
+message MintingInfo {
+    int32 blocks = 1;
+    int32 currentblockweight = 2;
+    int32 currentblocktx = 3;
+    string difficulty = 4;
+    bool isoperator = 5;
+    string masternodeid = 6;
+    string masternodeoperator = 7;
+    MasterNodeState masternodestate = 8;
+    bool generate = 9;
+    int32 mintedblocks = 10;
+    int32 networkhashps = 11;
+    int32 pooledtx = 12;
+    // Chain chain = 13;
+    string warnings = 14;
+}
+enum EstimateMode {
+    UNSET = 0;
+    ECONOMICAL = 1;
+    CONSERVATIVE = 2;
+}
+  
+// rpc EstimateSmartFee(types.EstimateSmartFeeInput) returns (types.SmartFee);
+message EstimateSmartFeeInput {
+    uint64 confirmationTarget = 1; 
+    EstimateMode estimateMode = 2;
+}
+
+message SmartFeeEstimation {
+    int32 feerate = 1;
+    repeated string errors = 2;
+    int32 blocks = 3;
+  }

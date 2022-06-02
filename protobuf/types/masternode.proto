@@ -1,0 +1,76 @@
+syntax = "proto3";
+package types;
+import "types/poolpair.proto";
+
+enum MasterNodeState {
+  MasterNodeState_PRE_ENABLED = 0;
+  MasterNodeState_ENABLED = 1;
+  MasterNodeState_PRE_RESIGNED = 2;
+  MasterNodeState_RESIGNED = 3;
+  MasterNodeState_PRE_BANNED = 4;
+  MasterNodeState_BANNED = 5;
+  MasterNodeState_UNKNOWN = 6;
+}
+
+enum MasterNodeTimeLock {
+  MasterNodeTimeLock_FIVE_YEAR = 0;
+  MasterNodeTimeLock_TEN_YEAR = 1;
+}
+
+/* message UTXO { */
+/*   string txid = 1; */
+/*   int32 vout = 2; */
+/* } */
+
+message CreateMasterNodeOptions {
+  repeated UTXO utxos = 1;
+  MasterNodeTimeLock timelock = 2;
+}
+
+message MasterNodePagination {
+  string start = 1;
+  bool including_start = 2;
+  int32 limit = 3;
+}
+
+message MasterNodeBlock {
+  string id = 1;
+  string owner_address = 2;
+  string operator_address = 3;
+}
+
+message MasterNodeInfo {
+  string owner_auth_address = 1;
+  string operator_auth_address = 2;
+  int32 creation_height = 3;
+  int32 resign_height = 4;
+  string resign_tx = 5;
+  string ban_tx = 6;
+  MasterNodeState state = 7;
+  int32 minted_blocks = 8;
+  bool owner_is_mine = 9;
+  bool operator_is_mine = 10;
+  bool local_masternode = 11;
+  int32 target_multiplier = 12;
+  repeated int32 target_multipliers = 13;
+  int32 timelock = 14;
+}
+
+message MasterNodeAnchor {
+  int32 anchor_height = 1;
+  string anchor_hash = 2;
+  string reward_address = 3;
+  string dfi_reward_hash = 4;
+  int32 btc_anchor_height = 5;
+  string btc_anchor_hash = 6;
+  string confirm_sign_hash = 7;
+}
+
+message AnchorTeamResult {
+  repeated string auth = 1;
+  repeated string confirm = 2;
+}
+
+message MasterNodeResult {
+  map<string, string> id = 1;
+}
