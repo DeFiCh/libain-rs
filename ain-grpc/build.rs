@@ -58,12 +58,6 @@ impl Attr {
 const TYPE_ATTRS: &[Attr] = &[
     Attr {
         matcher: ".*",
-        attr: Some("#[derive(Debug)]"),
-        rename: None,
-        skip: &[],
-    },
-    Attr {
-        matcher: ".*",
         attr: Some("#[derive(Serialize)] #[serde(rename_all=\"camelCase\")]"),
         rename: None,
         skip: &["BlockResult", "NonUtxo", "Transaction"],
@@ -177,10 +171,29 @@ fn generate_from_protobuf(dir: &Path, out_dir: &Path) -> HashMap<String, Vec<Rpc
 
 fn modify_codegen(
     methods: HashMap<String, Vec<Rpc>>,
+    parent_dir: &Path,
     types_path: &Path,
     rpc_path: &Path,
     lib_path: &Path,
 ) -> TokenStream {
+    let mut headers = vec![];
+    let mut root = parent_dir.to_owned();
+    root.pop();
+    visit_files(parent_dir, &mut |entry: &DirEntry| {
+        let path = entry.path();
+        let file_name = path.file_name().unwrap().to_str().unwrap();
+        if file_name.ends_with(".h") {
+            println!("cargo:rerun-if-changed={}", path.display());
+            headers.push(
+                path.strip_prefix(&root.display().to_string())
+                    .unwrap()
+                    .display()
+                    .to_string(),
+            );
+        }
+    })
+    .expect("visiting headers");
+
     let mut contents = String::new();
     File::open(types_path)
         .unwrap()
@@ -197,7 +210,7 @@ fn modify_codegen(
         .write_all(contents.as_bytes())
         .unwrap();
 
-    let (ffi_tt, impl_tt, rpc_tt) = apply_substitutions(ffi_structs, struct_map, methods);
+    let (ffi_tt, impl_tt, rpc_tt) = apply_substitutions(&headers, ffi_structs, struct_map, methods);
 
     // Append additional RPC impls next to proto-generated RPC impls
     contents.clear();
@@ -337,6 +350,7 @@ fn change_types(file: syn::File) -> (HashMap<String, ItemStruct>, TokenStream, T
 }
 
 fn apply_substitutions(
+    headers: &[String],
     mut gen: TokenStream,
     map: HashMap<String, ItemStruct>,
     methods: HashMap<String, Vec<Rpc>>,
@@ -480,7 +494,8 @@ fn apply_substitutions(
                 module.register_blocking_method(#rpc_name, |_params, _| {
                     #param_ffi
                     let mut out = ffi::#oty::default();
-                    ffi::#name(#call_ffi).map(|_| super::types::#oty::from(out)).map_err(|e| jsonrpsee_core::Error::Custom(e.to_string()))
+                    ffi::#name(#call_ffi).map(|_| super::types::#oty::from(out))
+                        .map_err(|e| { println!("{:?}", e); jsonrpsee_core::Error::Custom(e.to_string()) })
                 })?;
             ));
             server_mod.1.extend(quote!(
@@ -499,8 +514,16 @@ fn apply_substitutions(
         }
     }
 
+    let mut includes = quote!();
+    for path in headers {
+        includes.extend(quote! {
+            include!(#path);
+        });
+    }
+
     gen.extend(quote!(
         unsafe extern "C++" {
+            #includes
             #rpc
         }
     ));
@@ -576,9 +599,9 @@ fn main() {
     root.pop();
     let out_dir = env::var("OUT_DIR").unwrap();
     let methods = generate_from_protobuf(&root.join("protobuf"), Path::new(&out_dir));
-    println!("{}", parent.display());
     let tt = modify_codegen(
         methods,
+        &parent,
         &Path::new(&out_dir).join("types.rs"),
         &Path::new(&out_dir).join("rpc.rs"),
         &parent.join("src").join("lib.rs"),
