@@ -103,6 +103,18 @@ const FIELD_ATTRS: &[Attr] = &[
     },
 ];
 
+const PATCHES: &[(&str, &str)] = &[(
+    "} catch (const ::std::exception &e) {",
+    "} catch (const UniValue &e) {
+  auto s = e.write();
+  fail(s.c_str());
+} catch (const ::std::exception &e) {",
+), (
+    "#include <utility>",
+    "#include <univalue.h>
+#include <utility>"
+)];
+
 // Custom generator to collect RPC call signatures
 struct WrappedGenerator {
     methods: Rc<RefCell<HashMap<String, Vec<Rpc>>>>,
@@ -171,29 +183,10 @@ fn generate_from_protobuf(dir: &Path, out_dir: &Path) -> HashMap<String, Vec<Rpc
 
 fn modify_codegen(
     methods: HashMap<String, Vec<Rpc>>,
-    parent_dir: &Path,
     types_path: &Path,
     rpc_path: &Path,
     lib_path: &Path,
 ) -> TokenStream {
-    let mut headers = vec![];
-    let mut root = parent_dir.to_owned();
-    root.pop();
-    visit_files(parent_dir, &mut |entry: &DirEntry| {
-        let path = entry.path();
-        let file_name = path.file_name().unwrap().to_str().unwrap();
-        if file_name.ends_with(".h") {
-            println!("cargo:rerun-if-changed={}", path.display());
-            headers.push(
-                path.strip_prefix(&root.display().to_string())
-                    .unwrap()
-                    .display()
-                    .to_string(),
-            );
-        }
-    })
-    .expect("visiting headers");
-
     let mut contents = String::new();
     File::open(types_path)
         .unwrap()
@@ -210,7 +203,7 @@ fn modify_codegen(
         .write_all(contents.as_bytes())
         .unwrap();
 
-    let (ffi_tt, impl_tt, rpc_tt) = apply_substitutions(&headers, ffi_structs, struct_map, methods);
+    let (ffi_tt, impl_tt, rpc_tt) = apply_substitutions(ffi_structs, struct_map, methods);
 
     // Append additional RPC impls next to proto-generated RPC impls
     contents.clear();
@@ -350,7 +343,6 @@ fn change_types(file: syn::File) -> (HashMap<String, ItemStruct>, TokenStream, T
 }
 
 fn apply_substitutions(
-    headers: &[String],
     mut gen: TokenStream,
     map: HashMap<String, ItemStruct>,
     methods: HashMap<String, Vec<Rpc>>,
@@ -514,16 +506,8 @@ fn apply_substitutions(
         }
     }
 
-    let mut includes = quote!();
-    for path in headers {
-        includes.extend(quote! {
-            include!(#path);
-        });
-    }
-
     gen.extend(quote!(
         unsafe extern "C++" {
-            #includes
             #rpc
         }
     ));
@@ -583,13 +567,22 @@ fn get_path_bracketed_ty_simple(ty: &Type) -> Type {
 
 fn generate_cxx_glue(tt: TokenStream, target_dir: &Path) {
     let codegen = cxx_gen::generate_header_and_cc(tt, &cxx_gen::Opt::default()).unwrap();
+
+    let mut cpp_stuff = String::from_utf8(codegen.implementation).unwrap();
+    for (src, dest) in PATCHES {
+        assert!(cpp_stuff.contains(src));
+        assert!(!cpp_stuff.contains(dest));
+        cpp_stuff = cpp_stuff.replace(src, dest);
+        assert!(cpp_stuff.contains(dest));
+    }
+
     File::create(target_dir.join("libain.hpp"))
         .unwrap()
         .write_all(&codegen.header)
         .unwrap();
     File::create(target_dir.join("libain.cpp"))
         .unwrap()
-        .write_all(&codegen.implementation)
+        .write_all(cpp_stuff.as_bytes())
         .unwrap();
 }
 
@@ -601,7 +594,6 @@ fn main() {
     let methods = generate_from_protobuf(&root.join("protobuf"), Path::new(&out_dir));
     let tt = modify_codegen(
         methods,
-        &parent,
         &Path::new(&out_dir).join("types.rs"),
         &Path::new(&out_dir).join("rpc.rs"),
         &parent.join("src").join("lib.rs"),
