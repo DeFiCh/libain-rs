@@ -57,9 +57,6 @@ impl Attr {
             name,
             ty.unwrap_or_default()
         );
-        // if parent.is_some() {
-        //     panic!("{}, {}", combined, self.matcher);
-        // }
         let re = Regex::new(self.matcher).unwrap();
         re.is_match(&combined.replace(" ", ""))
             && !self.skip.iter().any(|&n| {
@@ -365,7 +362,7 @@ fn change_types(file: syn::File) -> (HashMap<String, ItemStruct>, TokenStream, T
         modified.extend(quote!(#s));
         map.insert(s.ident.to_string(), s.clone());
 
-        s.attrs = Attr::parse("#[derive(Default)]");
+        s.attrs = Attr::parse("#[derive(Debug, Default)]");
         let fields = match &mut s.fields {
             Fields::Named(ref mut f) => f,
             _ => unreachable!(),
@@ -414,14 +411,28 @@ fn apply_substitutions(
             ))
         }
     };
+    let (mut funcs, mut sigs) = (quote!(), quote!());
     let mut calls = HashMap::new();
-    for s in map.values() {
+    for (name, s) in &map {
         let mut copy_block_rs = quote!();
         let mut copy_block_ffi = quote!();
         let fields = match &s.fields {
             Fields::Named(ref f) => f,
             _ => unreachable!(),
         };
+
+        let s_name = Ident::new(name, Span::call_site());
+        let fn_name = Ident::new(&("Make".to_owned() + name), Span::call_site());
+        sigs.extend(quote!(
+            fn #fn_name() -> #s_name;
+        ));
+        funcs.extend(quote!(
+            #[inline]
+            #[allow(non_snake_case)]
+            fn #fn_name() -> ffi::#s_name {
+                Default::default()
+            }
+        ));
 
         for field in &fields.named {
             let name = &field.ident;
@@ -567,7 +578,14 @@ fn apply_substitutions(
         }
     }
 
+    impls.extend(quote!(
+        #funcs
+    ));
+
     gen.extend(quote!(
+        extern "Rust" {
+            #sigs
+        }
         unsafe extern "C++" {
             #rpc
         }
