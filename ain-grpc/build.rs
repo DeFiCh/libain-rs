@@ -104,6 +104,12 @@ const FIELD_ATTRS: &[Attr] = &[
         skip: &[],
     },
     Attr {
+        matcher: "req_sigs",
+        attr: Some("#[serde(skip_serializing_if = \"ignore_integer\")]"),
+        rename: None,
+        skip: &[],
+    },
+    Attr {
         matcher: "asm",
         attr: Some("#[serde(rename=\"asm\")]"),
         rename: Some("field_asm"),
@@ -306,7 +312,11 @@ fn modify_codegen(
 
 fn change_types(file: syn::File) -> (HashMap<String, ItemStruct>, TokenStream, TokenStream) {
     let mut map = HashMap::new();
-    let mut modified = quote!();
+    let mut modified = quote! {
+        fn ignore_integer<T: num_traits::PrimInt + num_traits::Signed + num_traits::NumCast>(i: &T) -> bool {
+            T::from(-1).unwrap() == *i
+        }
+    };
     let mut copied = quote!();
     // Replace prost-specific fields with defaults
     for item in file.items {
