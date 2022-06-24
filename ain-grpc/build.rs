@@ -1,7 +1,7 @@
 use heck::{ToPascalCase, ToSnekCase};
 use proc_macro2::{Span, TokenStream};
 use prost_build::{Config, Service, ServiceGenerator};
-use quote::quote;
+use quote::{quote, ToTokens};
 use regex::Regex;
 use syn::{
     Attribute, Field, Fields, GenericArgument, Ident, Item, ItemStruct, PathArguments, Type,
@@ -49,9 +49,23 @@ impl Attr {
         empty_struct.attrs
     }
 
-    fn matches(&self, name: &str) -> bool {
+    fn matches(&self, name: &str, parent: Option<&str>, ty: Option<&str>) -> bool {
+        let name = parent.map(|p| p.to_owned() + ".").unwrap_or_default() + name;
+        let combined = format!(
+            "{}.{}:{}",
+            parent.unwrap_or_default(),
+            name,
+            ty.unwrap_or_default()
+        );
+        // if parent.is_some() {
+        //     panic!("{}, {}", combined, self.matcher);
+        // }
         let re = Regex::new(self.matcher).unwrap();
-        re.is_match(name) && !self.skip.iter().any(|&n| n == name)
+        re.is_match(&combined.replace(" ", ""))
+            && !self.skip.iter().any(|&n| {
+                let re = Regex::new(n).unwrap();
+                re.is_match(&name)
+            })
     }
 }
 
@@ -60,7 +74,7 @@ const TYPE_ATTRS: &[Attr] = &[
         matcher: ".*",
         attr: Some("#[derive(Serialize)] #[serde(rename_all=\"camelCase\")]"),
         rename: None,
-        skip: &["BlockResult", "NonUtxo", "Transaction"],
+        skip: &["BlockResult", "NonUtxo", "^Transaction"],
     },
     Attr {
         matcher: "BlockInput",
@@ -77,6 +91,18 @@ const TYPE_ATTRS: &[Attr] = &[
 ];
 
 const FIELD_ATTRS: &[Attr] = &[
+    Attr {
+        matcher: ":::prost::alloc::string::String",
+        attr: Some("#[serde(skip_serializing_if = \"String::is_empty\")]"),
+        rename: None,
+        skip: &["BlockResult", "NonUtxo", "^Transaction"],
+    },
+    Attr {
+        matcher: ":::prost::alloc::vec::Vec",
+        attr: Some("#[serde(skip_serializing_if = \"Vec::is_empty\")]"),
+        rename: None,
+        skip: &[],
+    },
     Attr {
         matcher: "asm",
         attr: Some("#[serde(rename=\"asm\")]"),
@@ -291,7 +317,7 @@ fn change_types(file: syn::File) -> (HashMap<String, ItemStruct>, TokenStream, T
 
         let name = s.ident.to_string();
         for rule in TYPE_ATTRS {
-            if !rule.matches(&name) {
+            if !rule.matches(&name, None, None) {
                 continue;
             }
 
@@ -310,8 +336,9 @@ fn change_types(file: syn::File) -> (HashMap<String, ItemStruct>, TokenStream, T
         };
         for field in &mut fields.named {
             let f_name = field.ident.as_ref().unwrap().to_string();
+            let t_name = field.ty.to_token_stream().to_string();
             for rule in FIELD_ATTRS {
-                if !rule.matches(&f_name) {
+                if !rule.matches(&f_name, Some(&name), Some(&t_name)) {
                     continue;
                 }
 
