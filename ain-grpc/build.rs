@@ -103,17 +103,22 @@ const FIELD_ATTRS: &[Attr] = &[
     },
 ];
 
-const PATCHES: &[(&str, &str)] = &[(
-    "} catch (const ::std::exception &e) {",
-    "} catch (const UniValue &e) {
+const PATCHES: &[(&str, &str)] = &[
+    // We also throw Univalue, so that needs to be handled in addition to exceptions
+    (
+        "} catch (const ::std::exception &e) {",
+        "} catch (const UniValue &e) {
   auto s = e.write();
   fail(s.c_str());
 } catch (const ::std::exception &e) {",
-), (
-    "#include <utility>",
-    "#include <univalue.h>
-#include <utility>"
-)];
+    ),
+    // Univalue header
+    (
+        "#include <utility>",
+        "#include <univalue.h>
+#include <utility>",
+    ),
+];
 
 // Custom generator to collect RPC call signatures
 struct WrappedGenerator {
@@ -353,7 +358,25 @@ fn apply_substitutions(
 ) {
     // FIXME: We don't have to regenerate if the struct only has scalar types
     // (in which case it'll have the same schema in both FFI and protobuf)
-    let mut impls = quote!();
+    let mut impls = quote! {
+        fn extract_error(exc: cxx::Exception) -> jsonrpsee_core::Error {
+            let msg = exc.what();
+            let error: jsonrpsee_types::ErrorObject<'_> = match serde_json::from_str(msg) {
+                Ok(v) => v,
+                Err(e) => {
+                    log::warn!("Unable to deserialize exception message: {:?}", e);
+                    return jsonrpsee_core::Error::Custom(msg.into());
+                },
+            };
+
+            jsonrpsee_core::Error::Call(jsonrpsee_types::error::CallError::Custom(error.into_owned()))
+        }
+        fn missing_param(field: &str) -> jsonrpsee_core::Error {
+            jsonrpsee_core::Error::Call(jsonrpsee_types::error::CallError::Custom(
+                jsonrpsee_types::ErrorObject::borrowed(-1, &format!("Missing required parameter '{}'", field), None).into_owned()
+            ))
+        }
+    };
     let mut calls = HashMap::new();
     for s in map.values() {
         let mut copy_block_rs = quote!();
@@ -449,10 +472,11 @@ fn apply_substitutions(
                             let mut extract_fields = quote!();
                             for field in &f.named {
                                 let name = &field.ident;
+                                let name_str = name.as_ref().unwrap().to_string();
                                 let seq_extract = if let Some(value) = extract_default(field) {
                                     quote!(seq.next().unwrap_or(#value))
                                 } else {
-                                    quote!(seq.next()?)
+                                    quote!(seq.next().map_err(|_| missing_param(#name_str))?)
                                 };
                                 extract_fields.extend(quote!(
                                     #ivar.#name = #seq_extract;
@@ -487,7 +511,7 @@ fn apply_substitutions(
                     #param_ffi
                     let mut out = ffi::#oty::default();
                     ffi::#name(#call_ffi).map(|_| super::types::#oty::from(out))
-                        .map_err(|e| { println!("{:?}", e); jsonrpsee_core::Error::Custom(e.to_string()) })
+                        .map_err(extract_error)
                 })?;
             ));
             server_mod.1.extend(quote!(
