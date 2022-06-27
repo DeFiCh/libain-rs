@@ -1,7 +1,7 @@
 use heck::{ToPascalCase, ToSnekCase};
 use proc_macro2::{Span, TokenStream};
 use prost_build::{Config, Service, ServiceGenerator};
-use quote::quote;
+use quote::{quote, ToTokens};
 use regex::Regex;
 use syn::{
     Attribute, Field, Fields, GenericArgument, Ident, Item, ItemStruct, PathArguments, Type,
@@ -49,24 +49,29 @@ impl Attr {
         empty_struct.attrs
     }
 
-    fn matches(&self, name: &str) -> bool {
+    fn matches(&self, name: &str, parent: Option<&str>, ty: Option<&str>) -> bool {
+        let name = parent.map(|p| p.to_owned() + ".").unwrap_or_default() + name;
+        let combined = format!(
+            "{}.{}:{}",
+            parent.unwrap_or_default(),
+            name,
+            ty.unwrap_or_default()
+        );
         let re = Regex::new(self.matcher).unwrap();
-        re.is_match(name) && !self.skip.iter().any(|&n| n == name)
+        re.is_match(&combined.replace(" ", ""))
+            && !self.skip.iter().any(|&n| {
+                let re = Regex::new(n).unwrap();
+                re.is_match(&name)
+            })
     }
 }
 
 const TYPE_ATTRS: &[Attr] = &[
     Attr {
         matcher: ".*",
-        attr: Some("#[derive(Debug)]"),
-        rename: None,
-        skip: &[],
-    },
-    Attr {
-        matcher: ".*",
         attr: Some("#[derive(Serialize)] #[serde(rename_all=\"camelCase\")]"),
         rename: None,
-        skip: &["BlockResult", "NonUtxo", "Transaction"],
+        skip: &["BlockResult", "NonUtxo", "^Transaction"],
     },
     Attr {
         matcher: "BlockInput",
@@ -83,6 +88,24 @@ const TYPE_ATTRS: &[Attr] = &[
 ];
 
 const FIELD_ATTRS: &[Attr] = &[
+    Attr {
+        matcher: ":::prost::alloc::string::String",
+        attr: Some("#[serde(skip_serializing_if = \"String::is_empty\")]"),
+        rename: None,
+        skip: &["BlockResult", "NonUtxo", "^Transaction"],
+    },
+    Attr {
+        matcher: ":::prost::alloc::vec::Vec",
+        attr: Some("#[serde(skip_serializing_if = \"Vec::is_empty\")]"),
+        rename: None,
+        skip: &[],
+    },
+    Attr {
+        matcher: "req_sigs",
+        attr: Some("#[serde(skip_serializing_if = \"ignore_integer\")]"),
+        rename: None,
+        skip: &[],
+    },
     Attr {
         matcher: "asm",
         attr: Some("#[serde(rename=\"asm\")]"),
@@ -107,6 +130,23 @@ const FIELD_ATTRS: &[Attr] = &[
         rename: None,
         skip: &[],
     },
+];
+
+const PATCHES: &[(&str, &str)] = &[
+    // We also throw Univalue, so that needs to be handled in addition to exceptions
+    (
+        "} catch (const ::std::exception &e) {",
+        "} catch (const UniValue &e) {
+  auto s = e.write();
+  fail(s.c_str());
+} catch (const ::std::exception &e) {",
+    ),
+    // Univalue header
+    (
+        "#include <utility>",
+        "#include <univalue.h>
+#include <utility>",
+    ),
 ];
 
 // Custom generator to collect RPC call signatures
@@ -269,7 +309,11 @@ fn modify_codegen(
 
 fn change_types(file: syn::File) -> (HashMap<String, ItemStruct>, TokenStream, TokenStream) {
     let mut map = HashMap::new();
-    let mut modified = quote!();
+    let mut modified = quote! {
+        fn ignore_integer<T: num_traits::PrimInt + num_traits::Signed + num_traits::NumCast>(i: &T) -> bool {
+            T::from(-1).unwrap() == *i
+        }
+    };
     let mut copied = quote!();
     // Replace prost-specific fields with defaults
     for item in file.items {
@@ -280,7 +324,7 @@ fn change_types(file: syn::File) -> (HashMap<String, ItemStruct>, TokenStream, T
 
         let name = s.ident.to_string();
         for rule in TYPE_ATTRS {
-            if !rule.matches(&name) {
+            if !rule.matches(&name, None, None) {
                 continue;
             }
 
@@ -299,8 +343,9 @@ fn change_types(file: syn::File) -> (HashMap<String, ItemStruct>, TokenStream, T
         };
         for field in &mut fields.named {
             let f_name = field.ident.as_ref().unwrap().to_string();
+            let t_name = field.ty.to_token_stream().to_string();
             for rule in FIELD_ATTRS {
-                if !rule.matches(&f_name) {
+                if !rule.matches(&f_name, Some(&name), Some(&t_name)) {
                     continue;
                 }
 
@@ -317,7 +362,7 @@ fn change_types(file: syn::File) -> (HashMap<String, ItemStruct>, TokenStream, T
         modified.extend(quote!(#s));
         map.insert(s.ident.to_string(), s.clone());
 
-        s.attrs = Attr::parse("#[derive(Default)]");
+        s.attrs = Attr::parse("#[derive(Debug, Default)]");
         let fields = match &mut s.fields {
             Fields::Named(ref mut f) => f,
             _ => unreachable!(),
@@ -347,15 +392,47 @@ fn apply_substitutions(
 ) {
     // FIXME: We don't have to regenerate if the struct only has scalar types
     // (in which case it'll have the same schema in both FFI and protobuf)
-    let mut impls = quote!();
+    let mut impls = quote! {
+        fn extract_error(exc: cxx::Exception) -> jsonrpsee_core::Error {
+            let msg = exc.what();
+            let error: jsonrpsee_types::ErrorObject<'_> = match serde_json::from_str(msg) {
+                Ok(v) => v,
+                Err(e) => {
+                    log::warn!("Unable to deserialize exception message: {:?}", e);
+                    return jsonrpsee_core::Error::Custom(msg.into());
+                },
+            };
+
+            jsonrpsee_core::Error::Call(jsonrpsee_types::error::CallError::Custom(error.into_owned()))
+        }
+        fn missing_param(field: &str) -> jsonrpsee_core::Error {
+            jsonrpsee_core::Error::Call(jsonrpsee_types::error::CallError::Custom(
+                jsonrpsee_types::ErrorObject::borrowed(-1, &format!("Missing required parameter '{}'", field), None).into_owned()
+            ))
+        }
+    };
+    let (mut funcs, mut sigs) = (quote!(), quote!());
     let mut calls = HashMap::new();
-    for s in map.values() {
+    for (name, s) in &map {
         let mut copy_block_rs = quote!();
         let mut copy_block_ffi = quote!();
         let fields = match &s.fields {
             Fields::Named(ref f) => f,
             _ => unreachable!(),
         };
+
+        let s_name = Ident::new(name, Span::call_site());
+        let fn_name = Ident::new(&("Make".to_owned() + name), Span::call_site());
+        sigs.extend(quote!(
+            fn #fn_name() -> #s_name;
+        ));
+        funcs.extend(quote!(
+            #[inline]
+            #[allow(non_snake_case)]
+            fn #fn_name() -> ffi::#s_name {
+                Default::default()
+            }
+        ));
 
         for field in &fields.named {
             let name = &field.ident;
@@ -443,10 +520,11 @@ fn apply_substitutions(
                             let mut extract_fields = quote!();
                             for field in &f.named {
                                 let name = &field.ident;
+                                let name_str = name.as_ref().unwrap().to_string();
                                 let seq_extract = if let Some(value) = extract_default(field) {
                                     quote!(seq.next().unwrap_or(#value))
                                 } else {
-                                    quote!(seq.next()?)
+                                    quote!(seq.next().map_err(|_| missing_param(#name_str))?)
                                 };
                                 extract_fields.extend(quote!(
                                     #ivar.#name = #seq_extract;
@@ -480,7 +558,8 @@ fn apply_substitutions(
                 module.register_blocking_method(#rpc_name, |_params, _| {
                     #param_ffi
                     let mut out = ffi::#oty::default();
-                    ffi::#name(#call_ffi).map(|_| super::types::#oty::from(out)).map_err(|e| jsonrpsee_core::Error::Custom(e.to_string()))
+                    ffi::#name(#call_ffi).map(|_| super::types::#oty::from(out))
+                        .map_err(extract_error)
                 })?;
             ));
             server_mod.1.extend(quote!(
@@ -499,7 +578,14 @@ fn apply_substitutions(
         }
     }
 
+    impls.extend(quote!(
+        #funcs
+    ));
+
     gen.extend(quote!(
+        extern "Rust" {
+            #sigs
+        }
         unsafe extern "C++" {
             #rpc
         }
@@ -560,13 +646,22 @@ fn get_path_bracketed_ty_simple(ty: &Type) -> Type {
 
 fn generate_cxx_glue(tt: TokenStream, target_dir: &Path) {
     let codegen = cxx_gen::generate_header_and_cc(tt, &cxx_gen::Opt::default()).unwrap();
+
+    let mut cpp_stuff = String::from_utf8(codegen.implementation).unwrap();
+    for (src, dest) in PATCHES {
+        assert!(cpp_stuff.contains(src));
+        assert!(!cpp_stuff.contains(dest));
+        cpp_stuff = cpp_stuff.replace(src, dest);
+        assert!(cpp_stuff.contains(dest));
+    }
+
     File::create(target_dir.join("libain.hpp"))
         .unwrap()
         .write_all(&codegen.header)
         .unwrap();
     File::create(target_dir.join("libain.cpp"))
         .unwrap()
-        .write_all(&codegen.implementation)
+        .write_all(cpp_stuff.as_bytes())
         .unwrap();
 }
 
@@ -576,7 +671,6 @@ fn main() {
     root.pop();
     let out_dir = env::var("OUT_DIR").unwrap();
     let methods = generate_from_protobuf(&root.join("protobuf"), Path::new(&out_dir));
-    println!("{}", parent.display());
     let tt = modify_codegen(
         methods,
         &Path::new(&out_dir).join("types.rs"),

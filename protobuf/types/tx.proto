@@ -21,7 +21,6 @@ message RawTransaction {
     string blockhash = 12; // The block hash
     string confirmations = 13; // The confirmations
     uint64 blocktime = 14; // The block time in seconds since UNIX epoch
-    uint64 time = 15; // Same as "blocktime"
 }
 
 message Vin {
@@ -51,6 +50,6 @@ message PubKey {
     string asm = 1;
     string hex = 2;
     string type = 3;
-    uint32 req_sigs = 4;
+    int32 req_sigs = 4;
     repeated string addresses = 5;
 }
