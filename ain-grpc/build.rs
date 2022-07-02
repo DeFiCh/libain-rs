@@ -632,7 +632,11 @@ fn extract_default(field: &Field) -> Option<TokenStream> {
             Some(ident) if ident == "doc" => {
                 let comment = attr.tokens.to_string();
                 if let Some(captures) = re.captures(&comment) {
-                    return captures.get(1).unwrap().as_str().parse().ok();
+                    let value = captures.get(1).unwrap().as_str();
+                    if value == "empty" {
+                        return Some(quote!(Default::default()));
+                    }
+                    return value.parse().ok();
                 }
             }
             _ => (),
