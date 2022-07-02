@@ -1,0 +1,12 @@
+syntax = "proto3";
+package types;
+
+message AddressInput {
+    string label = 1;
+    string type = 2;
+    string wallet = 3;
+}
+
+message AddressResult {
+    string address = 1;
+}

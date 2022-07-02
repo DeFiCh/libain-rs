@@ -25,6 +25,19 @@ impl Serialize for types::BlockResult {
     }
 }
 
+impl Serialize for types::AddressResult {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        if self.address.is_empty() {
+            serializer.serialize_none()
+        } else {
+            serializer.serialize_str(&self.address)
+        }
+    }
+}
+
 impl Serialize for types::Transaction {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where

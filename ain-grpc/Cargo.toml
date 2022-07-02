@@ -10,9 +10,9 @@ crate-type = ["staticlib"]
 [dependencies]
 cxx = "1.0"
 env_logger = "0.9"
-jsonrpsee = { version = "0.14", features = ["http-server"] }
-jsonrpsee-core = "0.14"
-jsonrpsee-types = "0.14"
+jsonrpsee = { version = "0.14", features = ["http-server"], git = "https://github.com/DeFiCh/jsonrpsee" }
+jsonrpsee-core = { version = "0.14", git = "https://github.com/DeFiCh/jsonrpsee" }
+jsonrpsee-types = { version = "0.14", git = "https://github.com/DeFiCh/jsonrpsee" }
 # jsonrpc-v2 = "0.11"
 log = "0.4"
 num-traits = "0.2"

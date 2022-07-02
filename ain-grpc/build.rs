@@ -31,10 +31,10 @@ fn visit_files(dir: &Path, f: &mut dyn FnMut(&DirEntry)) -> io::Result<()> {
 }
 
 struct Attr {
-    matcher: &'static str,         // matcher for names
-    attr: Option<&'static str>,    // attribute to be added to the entity
-    rename: Option<&'static str>,  // whether entity should be renamed
-    skip: &'static [&'static str], // entities that should be skipped
+    matcher: &'static [&'static str], // matcher for names
+    attr: Option<&'static str>,       // attribute to be added to the entity
+    rename: Option<&'static str>,     // whether entity should be renamed
+    skip: &'static [&'static str],    // entities that should be skipped
 }
 
 impl Attr {
@@ -57,30 +57,36 @@ impl Attr {
             name,
             ty.unwrap_or_default()
         );
-        let re = Regex::new(self.matcher).unwrap();
-        re.is_match(&combined.replace(' ', ""))
-            && !self.skip.iter().any(|&n| {
-                let re = Regex::new(n).unwrap();
-                re.is_match(&name)
-            })
+        for matcher in self.matcher {
+            let re = Regex::new(matcher).unwrap();
+            if re.is_match(&combined.replace(' ', ""))
+                && !self.skip.iter().any(|&n| {
+                    let re = Regex::new(n).unwrap();
+                    re.is_match(&name)
+                })
+            {
+                return true;
+            }
+        }
+        false
     }
 }
 
 const TYPE_ATTRS: &[Attr] = &[
     Attr {
-        matcher: ".*",
+        matcher: &[".*"],
         attr: Some("#[derive(Serialize)] #[serde(rename_all=\"camelCase\")]"),
         rename: None,
-        skip: &["BlockResult", "NonUtxo", "^Transaction"],
+        skip: &["AddressResult", "BlockResult", "NonUtxo", "^Transaction"],
     },
     Attr {
-        matcher: ".*Input",
+        matcher: &[".*Input"],
         attr: Some("#[derive(Deserialize)]"),
         rename: None,
         skip: &[],
     },
     Attr {
-        matcher: "NonUtxo",
+        matcher: &["NonUtxo"],
         attr: Some("#[derive(Serialize)] #[serde(rename_all=\"PascalCase\")]"),
         rename: None,
         skip: &[],
@@ -89,55 +95,55 @@ const TYPE_ATTRS: &[Attr] = &[
 
 const FIELD_ATTRS: &[Attr] = &[
     Attr {
-        matcher: ":::prost::alloc::string::String",
+        matcher: &[":::prost::alloc::string::String"],
         attr: Some("#[serde(skip_serializing_if = \"String::is_empty\")]"),
         rename: None,
-        skip: &["BlockResult", "NonUtxo", "^Transaction"],
+        skip: &["AddressResult", "BlockResult", "NonUtxo", "^Transaction"],
     },
     Attr {
-        matcher: ":::prost::alloc::vec::Vec",
+        matcher: &[":::prost::alloc::vec::Vec"],
         attr: Some("#[serde(skip_serializing_if = \"Vec::is_empty\")]"),
         rename: None,
         skip: &[],
     },
     Attr {
-        matcher: "req_sigs",
+        matcher: &["req_sigs"],
         attr: Some("#[serde(skip_serializing_if = \"ignore_integer\")]"),
         rename: None,
         skip: &[],
     },
     Attr {
-        matcher: "currentblocktx|currentblockweight",
+        matcher: &["currentblocktx", "currentblockweight"],
         attr: Some("#[serde(skip_serializing_if = \"is_zero\")]"),
         rename: None,
         skip: &[],
     },
     Attr {
-        matcher: "asm",
+        matcher: &["asm"],
         attr: Some("#[serde(rename=\"asm\")]"),
         rename: Some("field_asm"),
         skip: &[],
     },
     Attr {
-        matcher: "operator",
+        matcher: &["operator"],
         attr: Some("#[serde(rename = \"operator\")]"),
         rename: Some("field_operator"),
         skip: &["isoperator"],
     },
     Attr {
-        matcher: "type",
+        matcher: &["type"],
         attr: Some("#[serde(rename=\"type\")]"),
         rename: Some("field_type"),
         skip: &[],
     },
     Attr {
-        matcher: "previous_block_hash",
+        matcher: &["previous_block_hash"],
         attr: Some("#[serde(rename=\"previousblockhash\")]"),
         rename: None,
         skip: &[],
     },
     Attr {
-        matcher: "next_block_hash",
+        matcher: &["next_block_hash"],
         attr: Some("#[serde(rename=\"nextblockhash\")]"),
         rename: None,
         skip: &[],
@@ -325,8 +331,8 @@ fn change_types(file: syn::File) -> (HashMap<String, ItemStruct>, TokenStream, T
         fn ignore_integer<T: num_traits::PrimInt + num_traits::Signed + num_traits::NumCast>(i: &T) -> bool {
             T::from(-1).unwrap() == *i
         }
-        fn is_zero(i: &i64) -> bool {
-            *i == 0
+        fn is_zero<T: num_traits::PrimInt + num_traits::NumCast>(i: &T) -> bool {
+            T::from(0).unwrap() == *i
         }
     };
 
@@ -516,19 +522,23 @@ fn apply_substitutions(
                     Span::call_site(),
                 ),
             );
-            let mut param_ffi = quote!();
+            let mut param_ffi = quote! {
+                let ctx = ffi::Context {
+                    url: _params.uri().into(),
+                };
+            };
             let (input_rs, input_ffi, into_ffi, call_ffi) =
                 if method.input_ty == ".google.protobuf.Empty" {
                     (
                         quote!(&self, _request: tonic::Request<()>),
-                        quote!(result: &mut #oty),
+                        quote!(ctx: &Context, result: &mut #oty),
                         quote!(),
-                        quote!(&mut out),
+                        quote!(&ctx, &mut out),
                     )
                 } else {
-                    param_ffi = quote! {
+                    param_ffi.extend(quote! {
                         let mut #ivar = super::types::#ity::default();
-                    };
+                    });
                     let struct_name = ity.to_string();
                     let type_struct = map.get(&struct_name).unwrap();
                     match &type_struct.fields {
@@ -561,9 +571,9 @@ fn apply_substitutions(
 
                     (
                         quote!(&self, request: tonic::Request<super::types::#ity>),
-                        quote!(#ivar: &mut #ity, result: &mut #oty),
+                        quote!(ctx: &Context, #ivar: &mut #ity, result: &mut #oty),
                         quote! { let mut input = request.into_inner().into(); },
-                        quote!(&mut input, &mut out),
+                        quote!(&ctx, &mut input, &mut out),
                     )
                 };
             rpc.extend(quote!(
@@ -580,7 +590,8 @@ fn apply_substitutions(
             ));
             server_mod.1.extend(quote!(
                 async fn #name_rs(#input_rs) -> Result<tonic::Response<super::types::#oty>, tonic::Status> {
-                    let result = tokio::task::spawn_blocking(|| {
+                    let ctx = ffi::Context::default();
+                    let result = tokio::task::spawn_blocking(move || {
                         let mut out = ffi::#oty::default();
                         #into_ffi
                         ffi::#name(#call_ffi).map(|_| out).map_err(|e| tonic::Status::unknown(e.to_string()))
@@ -599,6 +610,10 @@ fn apply_substitutions(
     ));
 
     gen.extend(quote!(
+        #[derive(Debug, Default)]
+        pub struct Context {
+            pub url: String,
+        }
         extern "Rust" {
             #sigs
         }

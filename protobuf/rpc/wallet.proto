@@ -1,0 +1,11 @@
+syntax = "proto3";
+package rpc;
+
+import "google/protobuf/empty.proto";
+import "types/wallet.proto";
+
+// NOTE: Only retain services here
+
+service Wallet {
+    rpc GetNewAddress(types.AddressInput) returns (types.AddressResult);
+}
