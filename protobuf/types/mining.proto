@@ -1,0 +1,63 @@
+syntax = "proto3";
+package types;
+
+message MintingInfo {
+   int64 blocks = 1;
+   int64 currentblockweight = 2;
+   int64 currentblocktx = 3;
+   double difficulty = 4;
+   bool isoperator = 5;
+   string masternodeid = 6;
+   string masternodeoperator = 7;
+   string masternodestate = 8;
+   bool generate = 9;
+   int64 mintedblocks = 10;
+   int64 networkhashps = 11;
+   int64 pooledtx = 12;
+   string chain = 13;
+   string warnings = 14;
+}
+
+message MiningInfo {
+   int64 blocks = 1;
+   int64 currentblockweight = 2;
+   int64 currentblocktx = 3;
+   double difficulty = 4;
+   bool isoperator = 5;
+   repeated MasternodeInfo masternodes = 6;
+   int64 networkhashps = 7;
+   int64 pooledtx = 8;
+   string chain = 9;
+   string warnings = 10;
+}
+
+message MasternodeInfo {
+   string id = 1;
+   string field_operator = 2;
+   string state = 3;
+   bool generate = 4;
+   int64 mintedblocks = 5;
+   string lastblockcreationattempt = 6;
+   repeated double targetMultipliers = 7;
+   string timelock = 8;
+}
+
+message EstimateSmartFeeInput {
+   int64 conf_target = 1;
+   string estimate_mode = 2; // [default: "CONSERVATIVE"]
+}
+
+message EstimateSmartFeeResult {
+   int64 feerate = 1;
+   repeated string errors = 2;
+   int64 blocks = 3;
+}
+
+message GetNetworkHashPerSecondInput {
+    int64 nblocks = 1; // "The number of blocks, or -1 for blocks since last difficulty change. [default: 120]
+    int64 height = 2; // To estimate at the time of the given height. [default: -1]
+}
+
+message GetNetworkHashPerSecondResult {
+    double hashps = 1; // Network hash per second
+}
