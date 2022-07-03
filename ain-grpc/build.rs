@@ -58,7 +58,7 @@ impl Attr {
             ty.unwrap_or_default()
         );
         let re = Regex::new(self.matcher).unwrap();
-        re.is_match(&combined.replace(" ", ""))
+        re.is_match(&combined.replace(' ', ""))
             && !self.skip.iter().any(|&n| {
                 let re = Regex::new(n).unwrap();
                 re.is_match(&name)
