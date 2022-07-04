@@ -58,7 +58,7 @@ impl Attr {
             ty.unwrap_or_default()
         );
         let re = Regex::new(self.matcher).unwrap();
-        re.is_match(&combined.replace(" ", ""))
+        re.is_match(&combined.replace(' ', ""))
             && !self.skip.iter().any(|&n| {
                 let re = Regex::new(n).unwrap();
                 re.is_match(&name)
@@ -74,7 +74,7 @@ const TYPE_ATTRS: &[Attr] = &[
         skip: &["BlockResult", "NonUtxo", "^Transaction"],
     },
     Attr {
-        matcher: "BlockInput",
+        matcher: ".*Input",
         attr: Some("#[derive(Deserialize)]"),
         rename: None,
         skip: &[],
@@ -107,10 +107,22 @@ const FIELD_ATTRS: &[Attr] = &[
         skip: &[],
     },
     Attr {
+        matcher: "currentblocktx|currentblockweight",
+        attr: Some("#[serde(skip_serializing_if = \"is_zero\")]"),
+        rename: None,
+        skip: &[],
+    },
+    Attr {
         matcher: "asm",
         attr: Some("#[serde(rename=\"asm\")]"),
         rename: Some("field_asm"),
         skip: &[],
+    },
+    Attr {
+        matcher: "operator",
+        attr: Some("#[serde(rename = \"operator\")]"),
+        rename: Some("field_operator"),
+        skip: &["isoperator"],
     },
     Attr {
         matcher: "type",
@@ -313,7 +325,11 @@ fn change_types(file: syn::File) -> (HashMap<String, ItemStruct>, TokenStream, T
         fn ignore_integer<T: num_traits::PrimInt + num_traits::Signed + num_traits::NumCast>(i: &T) -> bool {
             T::from(-1).unwrap() == *i
         }
+        fn is_zero(i: &i64) -> bool {
+            *i == 0
+        }
     };
+
     let mut copied = quote!();
     // Replace prost-specific fields with defaults
     for item in file.items {

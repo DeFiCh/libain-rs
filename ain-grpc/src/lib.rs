@@ -6,12 +6,14 @@ mod codegen;
 
 use env_logger::{Builder as LogBuilder, Env};
 use jsonrpsee::http_server::{HttpServerBuilder, HttpServerHandle};
+use jsonrpsee_core::server::rpc_module::Methods;
 use log::Level;
 use tokio::runtime::{Builder, Runtime as AsyncRuntime};
 use tokio::sync::mpsc::{self, Sender};
 use tonic::transport::Server;
 
 use crate::codegen::rpc::BlockchainService;
+use crate::codegen::rpc::MiningService;
 
 use std::error::Error;
 use std::net::SocketAddr;
@@ -44,7 +46,11 @@ impl Runtime {
                 .custom_tokio_runtime(handle)
                 .build(addr),
         )?;
-        self.jrpc_handle = Some(server.start(BlockchainService::module()?)?);
+        let mut methods: Methods = Methods::new();
+        methods.merge(BlockchainService::module()?)?;
+        methods.merge(MiningService::module()?)?;
+
+        self.jrpc_handle = Some(server.start(methods)?);
         Ok(())
     }
 
@@ -53,6 +59,7 @@ impl Runtime {
         self.rt.as_ref().expect("uninitialized runtime").spawn(
             Server::builder()
                 .add_service(BlockchainService::service())
+                .add_service(MiningService::service())
                 .serve(addr.parse()?),
         );
         Ok(())
