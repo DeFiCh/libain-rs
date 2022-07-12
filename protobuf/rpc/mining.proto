@@ -6,11 +6,13 @@ import "types/mining.proto";
 
 service Mining {
     // Returns the estimated network hashes per second based on the last n blocks.
-    rpc GetNetworkHashPerSecond(types.GetNetworkHashPerSecondInput) returns (types.GetNetworkHashPerSecondResult);
+    // - Pass in [blocks] to override # of blocks, -1 specifies since last difficulty change.
+    // - Pass in [height] to estimate the network speed at the time when a certain block was found.
+    rpc GetNetworkHashPS(types.NetworkHashRateInput) returns (types.NetworkHashRateResult);
 
     // Returns a json object containing mining-related information for all local masternodes
     rpc GetMiningInfo(google.protobuf.Empty) returns (types.MiningInfo);
 
     // Estimates the approximate fee per kilobyte needed for a transaction to begin
-    rpc EstimateSmartFee(types.EstimateSmartFeeInput) returns (types.EstimateSmartFeeResult);
+    rpc EstimateSmartFee(types.SmartFeeInput) returns (types.SmartFeeResult);
 }

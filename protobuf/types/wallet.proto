@@ -2,11 +2,24 @@ syntax = "proto3";
 package types;
 
 message AddressInput {
-    string label = 1; // [default: empty]
-    string type = 2; // [default: empty]
-    string wallet = 3; // [default: empty]
+    string label = 1; // The label name for the address to be linked to. It can also be set to the empty string "" to represent the default label. The label does not need to exist, it will be created if there is no label by the given name. [default: empty]
+    string address_type = 2; // The address type to use. Options are "legacy", "p2sh-segwit", and "bech32". [default: empty]
+    string wallet = 3; // Optional wallet name [default: empty]
 }
 
 message AddressResult {
-    string address = 1;
+    string address = 1; // The new defi address
+}
+
+message BalanceInput {
+    string dummy = 1; // Remains for backward compatibility. Must be excluded or set to "*". [default: empty]
+    uint32 minconf = 2; // Only include transactions confirmed at least this many times. [default: 0]
+    bool include_watchonly = 3; // Also include balance in watch-only addresses (see 'importaddress') [default: empty]
+    bool avoid_reuse = 4; // (only available if avoid_reuse wallet flag is set) Do not include balance in dirty outputs; addresses are considered dirty if they have previously been used in a transaction. [default: true]
+    bool with_tokens = 5; // Include tokens balances; Default is 'false' for backward compatibility. [default: false]
+}
+
+message BalanceResult {
+    double amount = 1; // The total amount in DFI received for this wallet
+    map<string, double> tokens = 2; // Map of [tokenID -> amount] if `with_tokens` option is set
 }

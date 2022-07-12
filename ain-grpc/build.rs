@@ -470,6 +470,14 @@ fn apply_substitutions(
                     quote!(other.#name.into_iter().map(Into::into).collect()),
                     quote!(other.#name.into_iter().map(Into::into).collect()),
                 )
+            } else if t.contains("::collections::HashMap") {
+                (
+                    quote!(serde_json::from_str(&other.#name).unwrap_or_else(|e| {
+                        log::error!("Failed to decode JSON map: {:?}", e);
+                        Default::default()
+                    })),
+                    quote!(serde_json::to_string(&other.#name).unwrap()),
+                )
             } else {
                 (quote!(other.#name.into()), quote!(other.#name.into()))
             };
@@ -648,30 +656,37 @@ fn extract_default(field: &Field) -> Option<TokenStream> {
 
 fn fix_type(ty: &mut Type) {
     let t = quote!(#ty).to_string().replace(' ', "");
-    if t.contains("::prost::alloc::string::") {
+    if t.contains("::std::collections::HashMap") {
+        // FIXME: Until we're able to implement custom translation code for cxx types
+        // or until cxx actually supports hashmaps, the only way to get around this is
+        // by accepting JSON from C++.
         *ty = syn::parse2(quote!(String)).unwrap();
-    }
-    if t.contains("::prost::alloc::vec::") {
-        let mut inner = get_path_bracketed_ty_simple(ty);
+    } else if t.starts_with("::prost::alloc::string::") {
+        *ty = syn::parse2(quote!(String)).unwrap();
+    } else if t.contains("::prost::alloc::vec::") {
+        let mut inner = get_path_bracketed_ty_simple(ty).remove(0);
         fix_type(&mut inner);
         *ty = syn::parse2(quote!(Vec<#inner>)).unwrap();
-    }
-    if t.contains("::core::option::") {
-        *ty = get_path_bracketed_ty_simple(ty);
+    } else if t.contains("::core::option::") {
+        *ty = get_path_bracketed_ty_simple(ty).remove(0);
     }
 }
 
 /// Extracts "T" from std::option::Option<T> for example
-fn get_path_bracketed_ty_simple(ty: &Type) -> Type {
+fn get_path_bracketed_ty_simple(ty: &Type) -> Vec<Type> {
     match ty {
         Type::Path(ref p) => {
             let last = p.path.segments.last().unwrap();
             match &last.arguments {
-                PathArguments::AngleBracketed(ref a) => match a.args.first().unwrap() {
-                    GenericArgument::Type(ref t) => t.clone(),
-                    _ => panic!("unsupported generic type: {}", quote!(#ty)),
-                },
-                PathArguments::None => ty.clone(),
+                PathArguments::AngleBracketed(ref a) => a
+                    .args
+                    .iter()
+                    .map(|a| match a {
+                        GenericArgument::Type(ref t) => t.clone(),
+                        _ => panic!("unsupported generic type: {}", quote!(#ty)),
+                    })
+                    .collect(),
+                PathArguments::None => vec![ty.clone()],
                 _ => panic!("parenthesis type {} not supported", quote!(#ty)),
             }
         }
