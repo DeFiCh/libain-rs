@@ -448,14 +448,8 @@ fn apply_substitutions(
         sigs.extend(quote!(
             fn #fn_name() -> #s_name;
         ));
-        funcs.extend(quote!(
-            #[inline]
-            #[allow(non_snake_case)]
-            fn #fn_name() -> ffi::#s_name {
-                Default::default()
-            }
-        ));
 
+        let mut defaults = quote!();
         for field in &fields.named {
             let name = &field.ident;
             let ty = &field.ty;
@@ -482,6 +476,12 @@ fn apply_substitutions(
                 (quote!(other.#name.into()), quote!(other.#name.into()))
             };
 
+            if let Some(value) = extract_default(field) {
+                defaults.extend(quote! {
+                    v.#name = #value;
+                });
+            }
+
             copy_block_rs.extend(quote!(
                 #name: #into_rs,
             ));
@@ -489,6 +489,24 @@ fn apply_substitutions(
                 #name: #into_ffi,
             ));
         }
+
+        if defaults.is_empty() {
+            defaults = quote!(Default::default());
+        } else {
+            defaults = quote! {
+                let mut v = ffi::#s_name::default();
+                #defaults
+                v
+            };
+        }
+
+        funcs.extend(quote!(
+            #[inline]
+            #[allow(non_snake_case)]
+            fn #fn_name() -> ffi::#s_name {
+                #defaults
+            }
+        ));
 
         let name = &s.ident;
         impls.extend(quote!(
@@ -553,8 +571,8 @@ fn apply_substitutions(
                         Fields::Named(ref f) => {
                             let mut extract_fields = quote!();
                             for field in &f.named {
-                                let name = &field.ident;
-                                let name_str = name.as_ref().unwrap().to_string();
+                                let name = field.ident.as_ref();
+                                let name_str = name.unwrap().to_string();
                                 let seq_extract = if let Some(value) = extract_default(field) {
                                     quote!(seq.next().unwrap_or(#value))
                                 } else {
@@ -640,11 +658,17 @@ fn extract_default(field: &Field) -> Option<TokenStream> {
             Some(ident) if ident == "doc" => {
                 let comment = attr.tokens.to_string();
                 if let Some(captures) = re.captures(&comment) {
-                    let value = captures.get(1).unwrap().as_str();
+                    let mut value = captures.get(1).unwrap().as_str().to_string();
+                    if value.starts_with("\\\"") {
+                        value = format!("String::from({})", value.replace("\\", ""));
+                    }
                     if value == "empty" {
                         return Some(quote!(Default::default()));
                     }
-                    return value.parse().ok();
+                    match value.parse() {
+                        Ok(v) => return Some(v),
+                        Err(e) => panic!("Error parsing default value {:?}: {:?}", value, e),
+                    }
                 }
             }
             _ => (),
