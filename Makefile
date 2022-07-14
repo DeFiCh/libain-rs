@@ -15,3 +15,11 @@ build-grpc-pkg:
 	cp target/release/libain_grpc.a pkg/ain-grpc/lib/
 	cp target/libain.hpp pkg/ain-grpc/include/
 	cp target/libain.cpp pkg/ain-grpc/
+
+# TODO: Merge this with grpc package when ain links both
+build-core-pkg:
+	$(CARGO) build --package ain-core --release
+	mkdir -p pkg/ain-core/include pkg/ain-core/lib
+	cp target/release/libain_core.a pkg/ain-core/lib/
+	cp target/libain_core.hpp pkg/ain-core/include/
+	cp target/libain_core.cpp pkg/ain-core/

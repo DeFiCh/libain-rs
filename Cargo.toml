@@ -1,5 +1,6 @@
 [workspace]
 members = [
+    "ain-core",
     "ain-grpc",
     "wasm-modules/dex",
     "wasm-runtime",
