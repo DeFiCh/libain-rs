@@ -14,7 +14,7 @@ impl Serialize for types::BlockResult {
     where
         S: serde::Serializer,
     {
-        if self.hash.is_empty() {
+        if !self.hash.is_empty() {
             return serializer.serialize_str(&self.hash);
         }
 
@@ -31,7 +31,7 @@ impl Serialize for types::Transaction {
     where
         S: serde::Serializer,
     {
-        if self.hash.is_empty() {
+        if !self.hash.is_empty() {
             return serializer.serialize_str(&self.hash);
         }
 
