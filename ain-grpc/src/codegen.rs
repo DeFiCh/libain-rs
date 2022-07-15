@@ -4,6 +4,7 @@ pub mod types {
     tonic::include_proto!("types");
 }
 
+#[allow(clippy::useless_conversion)]
 pub mod rpc {
     tonic::include_proto!("rpc");
 }
@@ -13,7 +14,7 @@ impl Serialize for types::BlockResult {
     where
         S: serde::Serializer,
     {
-        if self.hash != "" {
+        if !self.hash.is_empty() {
             return serializer.serialize_str(&self.hash);
         }
 
@@ -30,7 +31,7 @@ impl Serialize for types::Transaction {
     where
         S: serde::Serializer,
     {
-        if self.hash != "" {
+        if !self.hash.is_empty() {
             return serializer.serialize_str(&self.hash);
         }
 

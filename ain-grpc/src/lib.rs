@@ -120,6 +120,7 @@ fn start_servers(
     Ok(runtime)
 }
 
+#[allow(clippy::boxed_local)]
 fn stop_servers(mut runtime: Box<Runtime>) -> Result<(), Box<dyn Error>> {
     log::info!("Stopping gRPC and JSON RPC servers");
     runtime.stop();
