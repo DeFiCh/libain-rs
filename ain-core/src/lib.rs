@@ -15,7 +15,11 @@ mod calc {
 
         fn calc_dex_fee(algo_dusd: f64, dusd_supply: f64) -> f64;
 
-        fn calc_loan_interest_rate(reserve_dfi: f64, reserve_dusd: f64, dfi_oracle_price: f64) -> f64;
+        fn calc_loan_interest_rate(
+            reserve_dfi: f64,
+            reserve_dusd: f64,
+            dfi_oracle_price: f64,
+        ) -> f64;
     }
 }
 

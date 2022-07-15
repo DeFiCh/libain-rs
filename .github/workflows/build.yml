@@ -24,5 +24,7 @@ jobs:
         run: make build-wasm-pkg
       - name: Build lib
         run: make build-grpc-pkg
+      - name: Build core
+        run: make build-core-pkg
       - name: Run tests
         run: cargo test --verbose --workspace

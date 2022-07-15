@@ -13,7 +13,10 @@ fn main() {
     let target_dir = &root.join("target");
 
     let mut content = String::new();
-    File::open(lib_path).unwrap().read_to_string(&mut content).unwrap();
+    File::open(lib_path)
+        .unwrap()
+        .read_to_string(&mut content)
+        .unwrap();
     let tt: TokenStream = content.parse().unwrap();
     let codegen = cxx_gen::generate_header_and_cc(tt, &cxx_gen::Opt::default()).unwrap();
 
