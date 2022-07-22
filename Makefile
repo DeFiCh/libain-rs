@@ -1,5 +1,6 @@
 CARGO ?= cargo
 CBINDGEN ?= cbindgen
+TARGET ?=
 
 build-wasm-pkg :
 	$(CARGO) build --package runtime --release
@@ -10,7 +11,7 @@ build-wasm-pkg :
 	cp target/wasm32-wasi/release/dex.wasm pkg/modules-wasm/dex.wasm
 
 build-grpc-pkg:
-	$(CARGO) build --package ain-grpc --release
+	$(CARGO) build --package ain-grpc --release $(if $(TARGET),--target $(TARGET),)
 	mkdir -p pkg/ain-grpc/include pkg/ain-grpc/lib
 	cp target/release/libain_grpc.a pkg/ain-grpc/lib/
 	cp target/libain.hpp pkg/ain-grpc/include/
@@ -18,7 +19,7 @@ build-grpc-pkg:
 
 # TODO: Merge this with grpc package when ain links both
 build-core-pkg:
-	$(CARGO) build --package ain-core --release
+	$(CARGO) build --package ain-core --release $(if $(TARGET),--target $(TARGET),)
 	mkdir -p pkg/ain-core/include pkg/ain-core/lib
 	cp target/release/libain_core.a pkg/ain-core/lib/
 	cp target/libain_core.hpp pkg/ain-core/include/
