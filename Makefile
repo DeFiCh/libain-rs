@@ -21,6 +21,6 @@ build-grpc-pkg:
 build-core-pkg:
 	$(CARGO) build --package ain-core --release $(if $(TARGET),--target $(TARGET),)
 	mkdir -p pkg/ain-core/include pkg/ain-core/lib
-	cp target/release/libain_core.a pkg/ain-core/lib/
+	cp target/$(if $(TARGET),$(TARGET)/,)release/libain_core.a pkg/ain-core/lib/
 	cp target/libain_core.hpp pkg/ain-core/include/
 	cp target/libain_core.cpp pkg/ain-core/
