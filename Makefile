@@ -10,6 +10,7 @@ build-wasm-pkg :
 	$(CARGO) wasi build --package dex --release
 	cp target/wasm32-wasi/release/dex.wasm pkg/modules-wasm/dex.wasm
 
+# TODO: Merge this with core package when ain links both
 build-grpc-pkg:
 	$(CARGO) build --package ain-grpc --release $(if $(TARGET),--target $(TARGET),)
 	mkdir -p pkg/ain-grpc/include pkg/ain-grpc/lib
@@ -17,9 +18,10 @@ build-grpc-pkg:
 	cp target/libain.hpp pkg/ain-grpc/include/
 	cp target/libain.cpp pkg/ain-grpc/
 
-# TODO: Merge this with grpc package when ain links both
+# NOTE: CRATE_CC_NO_DEFAULTS=1 is necessary so that cxx doesn't cause any cross-compilation
+# issues when using `cc-rs`. Tracking issue: https://github.com/rust-lang/cc-rs/issues/710
 build-core-pkg:
-	$(CARGO) build --package ain-core --release $(if $(TARGET),--target $(TARGET),)
+	CRATE_CC_NO_DEFAULTS=1 $(CARGO) build --package ain-core --release $(if $(TARGET),--target $(TARGET),)
 	mkdir -p pkg/ain-core/include pkg/ain-core/lib
 	cp target/$(if $(TARGET),$(TARGET)/,)release/libain_core.a pkg/ain-core/lib/
 	cp target/libain_core.hpp pkg/ain-core/include/
