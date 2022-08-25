@@ -16,12 +16,12 @@ jobs:
           - ubuntu-18.04
     steps:
       - uses: actions/checkout@v2
-      - name: Install cbindgen
-        run: cargo install cbindgen
-      - name: Install cargo wasi
-        run: cargo install cargo-wasi
-      - name: Build wasm
-        run: make build-wasm-pkg
+      # - name: Install cbindgen
+      #   run: cargo install cbindgen
+      # - name: Install cargo wasi
+      #   run: cargo install cargo-wasi
+      # - name: Build wasm
+      #   run: make build-wasm-pkg
       - name: Build lib
         run: make build-grpc-pkg
       - name: Build core

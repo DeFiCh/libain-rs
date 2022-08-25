@@ -54,8 +54,10 @@ fn set_interest_rate_coefficients(discount: i64, premium: i64) {
 /// Calculates the dynamic dex stabilization fee for DUSD on DUSD-DFI pair. The size of the fee
 /// is determined by the ratio of algorithmic DUSD to the total amount of outstanding DUSD.
 fn calc_dex_fee(algo_dusd: i64, dusd_supply: i64) -> Result<i64, Box<dyn Error>> {
-    let ratio = Amount::COIN - Amount(algo_dusd).checked_price_divide(Amount(dusd_supply))
-        .ok_or_else(||"Cannot divide given DUSD supply")?;
+    let ratio = Amount::COIN
+        - Amount(algo_dusd)
+            .checked_price_divide(Amount(dusd_supply))
+            .ok_or("Cannot divide given DUSD supply")?;
 
     let coeff = COEFF_DEX_FEE.read().unwrap().as_raw();
     if ratio > RATIO_HALF {
@@ -69,14 +71,19 @@ fn calc_dex_fee(algo_dusd: i64, dusd_supply: i64) -> Result<i64, Box<dyn Error>>
 ///
 /// Calculates the dynamic interest rates on DUSD loans, based on the current discount/premium
 /// of DUSD evaluated with the DFI price oracle.
-fn calc_loan_interest_rate(reserve_dfi: i64, reserve_dusd: i64, dfi_oracle_price: i64) -> Result<i64, Box<dyn Error>> {
+fn calc_loan_interest_rate(
+    reserve_dfi: i64,
+    reserve_dusd: i64,
+    dfi_oracle_price: i64,
+) -> Result<i64, Box<dyn Error>> {
     if reserve_dfi <= 0 || reserve_dusd <= 0 {
         return Err("Reserve token amount must be positive".into());
     }
 
-    let price = Amount(reserve_dfi).checked_price_divide(Amount(reserve_dusd))
+    let price = Amount(reserve_dfi)
+        .checked_price_divide(Amount(reserve_dusd))
         .map(|a| a.checked_price_multiply(Amount(dfi_oracle_price)))
-        .ok_or_else(|| "Token amount is out of bounds")?;
+        .ok_or("Token amount is out of bounds")?;
 
     if price < DUSD_PRICE_FLOOR {
         let coeff = COEFF_DISCOUNT.read().unwrap().as_raw();

@@ -2,7 +2,7 @@
 
 use ethnum::U256;
 
-use std::ops::{Add, Sub, Mul, Div};
+use std::ops::{Add, Div, Mul, Sub};
 
 /// Amount in satoshis (can be negative)
 #[derive(Clone, Copy, PartialEq, Eq, Debug, PartialOrd, Ord)]
@@ -20,7 +20,9 @@ impl Amount {
             return None;
         }
 
-        Some(Amount(*U256::new((self.0 as u128 * Self::COIN.0 as u128) / price.0 as u128).low() as i64))
+        Some(Amount(
+            *U256::new((self.0 as u128 * Self::COIN.0 as u128) / price.0 as u128).low() as i64,
+        ))
     }
 
     pub fn as_raw(&self) -> f64 {
@@ -64,9 +66,7 @@ mod tests {
 
     #[test]
     fn test_multiply() {
-        let cases = &[
-            (50, 50, 2500),
-        ];
+        let cases = &[(50, 50, 2500)];
 
         for &(a, b, r) in cases {
             let a = Amount(a);
@@ -77,10 +77,7 @@ mod tests {
 
     #[test]
     fn test_divide() {
-        let cases = &[
-            (0, 0, 0),
-            (50, 50, 1),
-        ];
+        let cases = &[(0, 0, 0), (50, 50, 1)];
 
         for &(a, b, r) in cases {
             let a = Amount(a);
