@@ -23,7 +23,7 @@ message MintBlockResult {
 }
 
 message GetBlockHashInput {
-  option uint64 at = 1;
+  uint64 at = 1;
 }
 
 message GetBlockHashResult {
@@ -31,7 +31,7 @@ message GetBlockHashResult {
 }
 
 message GetBlockInput {
-  option uint64 at = 1;
+  uint64 at = 1;
 }
 
 message GetBlockResult {
