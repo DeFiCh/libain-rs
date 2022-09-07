@@ -1,17 +1,16 @@
 syntax = "proto3";
 
-message DNCTx {
-  string from = 1;
-  string to = 2;
-  uint64 amount = 3;
-  string signature = 4;
-}
+message TX {
+  enum tx_type {
+    DMCTx = 0;
+    DNCTx = 1;
+  }
+  tx_type tx_from = 1;
+  string from = 2;
+  string to = 3;
+  uint64 amount = 4;
+  string signature = 5;
 
-message DMCTx {
-  string from = 1;
-  string to = 2;
-  uint64 amount = 3;
-  string signature = 4;
 }
 
 message MintBlockInput {
