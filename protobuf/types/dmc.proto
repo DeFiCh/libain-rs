@@ -1,0 +1,40 @@
+syntax = "proto3";
+
+message DNCTx {
+  string from = 1;
+  string to = 2;
+  uint64 amount = 3;
+  string signature = 4;
+}
+
+message DMCTx {
+  string from = 1;
+  string to = 2;
+  uint64 amount = 3;
+  string signature = 4;
+}
+
+message MintBlockParam {
+  repeated DNCTx dnc_tx = 1;
+}
+
+message MintBlockReturn {
+  bytes signature = 1;
+  repeated DMCTx dmc_tx = 2;
+}
+
+message GetBlockHashParam {
+  option uint64 at = 1;
+}
+
+message GetBlockHashReturn {
+  string hash = 1;
+}
+
+message GetBlockParam {
+  option uint64 at = 1;
+}
+
+message GetBlockReturn {
+  repeated string block_data = 1;
+}
