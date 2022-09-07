@@ -14,27 +14,27 @@ message DMCTx {
   string signature = 4;
 }
 
-message MintBlockParam {
+message MintBlockInput {
   repeated DNCTx dnc_tx = 1;
 }
 
-message MintBlockReturn {
+message MintBlockResult {
   bytes signature = 1;
   repeated DMCTx dmc_tx = 2;
 }
 
-message GetBlockHashParam {
+message GetBlockHashInput {
   option uint64 at = 1;
 }
 
-message GetBlockHashReturn {
+message GetBlockHashResult {
   string hash = 1;
 }
 
-message GetBlockParam {
+message GetBlockInput {
   option uint64 at = 1;
 }
 
-message GetBlockReturn {
+message GetBlockResult {
   repeated string block_data = 1;
 }
