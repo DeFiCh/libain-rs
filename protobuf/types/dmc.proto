@@ -1,25 +1,30 @@
 syntax = "proto3";
 
 message TX {
-  enum tx_type {
-    DMCTx = 0;
-    DNCTx = 1;
-  }
-  tx_type tx_from = 1;
-  string from = 2;
-  string to = 3;
-  uint64 amount = 4;
-  string signature = 5;
+  string from = 1;
+  string to = 2;
+  uint64 amount = 3;
+  string signature = 4;
 
 }
 
 message MintBlockInput {
-  repeated DNCTx dnc_tx = 1;
+  repeated TX dnc_tx = 1;
 }
 
 message MintBlockResult {
   bytes signature = 1;
-  repeated DMCTx dmc_tx = 2;
+  repeated TX dmc_tx = 2;
+}
+
+message ConnectBlockInput {
+  bytes dmc_payload = 1;
+  repeated TX dnc_tx = 2;
+}
+
+message ConnectBlockResult {
+  bool result = 1;
+  repeated TX dmc_tx = 2;
 }
 
 message GetBlockHashInput {
