@@ -1,0 +1,11 @@
+syntax = "proto3";
+package rpc;
+
+import "types/dmc.proto";
+
+service DMC {
+    rpc get_block_hash(types.GetBlockHashInput) returns (types.GetBlockHashResult);
+    rpc get_block(types.GetBlockInput) returns (types.GetBlockResult);
+    rpc mint_block(types.MintBlockInput) returns (types.MintBlockResult);
+    rpc connect_block(types.ConnectBlockInput) returns (types.ConnectBlockResult);
+}
