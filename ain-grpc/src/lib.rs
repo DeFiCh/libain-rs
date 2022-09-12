@@ -8,7 +8,7 @@ use env_logger::{Builder as LogBuilder, Env};
 use jsonrpsee::http_server::{HttpServerBuilder, HttpServerHandle};
 use jsonrpsee_core::server::rpc_module::Methods;
 use log::Level;
-use tokio::runtime::{Builder, Runtime as AsyncRuntime};
+use tokio::runtime::{Builder, Handle as AsyncHandle};
 use tokio::sync::mpsc::{self, Sender};
 use tonic::transport::Server;
 
@@ -17,31 +17,43 @@ use crate::codegen::rpc::MiningService;
 
 use std::error::Error;
 use std::net::SocketAddr;
+use std::sync::Mutex;
 use std::thread::{self, JoinHandle};
 
+lazy_static::lazy_static! {
+    // Global runtime exposed by the library
+    static ref RUNTIME: Runtime = Runtime::new();
+}
+
 struct Runtime {
-    rt: Option<AsyncRuntime>,
-    tx: Option<Sender<()>>,
-    handle: Option<JoinHandle<()>>,
-    jrpc_handle: Option<HttpServerHandle>, // dropping the handle kills server
+    rt_handle: AsyncHandle,
+    tx: Sender<()>,
+    handle: Mutex<Option<JoinHandle<()>>>,
+    jrpc_handle: Mutex<Option<HttpServerHandle>>, // dropping the handle kills server
 }
 
 impl Runtime {
-    fn new_boxed() -> Result<Box<Self>, Box<dyn Error>> {
-        Ok(Box::new(Runtime {
-            rt: Some(Builder::new_multi_thread().enable_all().build()?),
-            tx: None,
-            handle: None,
-            jrpc_handle: None,
-        }))
+    fn new() -> Self {
+        let r = Builder::new_multi_thread().enable_all().build().unwrap();
+        let (tx, mut rx) = mpsc::channel(1);
+        Runtime {
+            tx,
+            rt_handle: r.handle().clone(),
+            handle: Mutex::new(Some(thread::spawn(move || {
+                log::info!("Starting runtime in a separate thread");
+                r.block_on(async move {
+                    rx.recv().await;
+                });
+            }))),
+            jrpc_handle: Mutex::new(None),
+        }
     }
 
-    fn add_json_rpc_server(&mut self, addr: &str) -> Result<(), Box<dyn Error>> {
+    fn add_json_rpc_server(&self, addr: &str) -> Result<(), Box<dyn Error>> {
         log::info!("Starting JSON RPC server at {}", addr);
         let addr = addr.parse::<SocketAddr>()?;
-        let rt = self.rt.as_ref().expect("uninitialized runtime");
-        let handle = rt.handle().clone();
-        let server = rt.block_on(
+        let handle = self.rt_handle.clone();
+        let server = self.rt_handle.block_on(
             HttpServerBuilder::default()
                 .custom_tokio_runtime(handle)
                 .build(addr),
@@ -50,13 +62,13 @@ impl Runtime {
         methods.merge(BlockchainService::module()?)?;
         methods.merge(MiningService::module()?)?;
 
-        self.jrpc_handle = Some(server.start(methods)?);
+        *self.jrpc_handle.lock().unwrap() = Some(server.start(methods)?);
         Ok(())
     }
 
     fn add_grpc_server(&self, addr: &str) -> Result<(), Box<dyn Error>> {
         log::info!("Starting gRPC server at {}", addr);
-        self.rt.as_ref().expect("uninitialized runtime").spawn(
+        self.rt_handle.spawn(
             Server::builder()
                 .add_service(BlockchainService::service())
                 .add_service(MiningService::service())
@@ -65,64 +77,41 @@ impl Runtime {
         Ok(())
     }
 
-    fn start(&mut self) {
-        let (tx, mut rx) = mpsc::channel(1);
-        self.tx = Some(tx);
-        let rt = self.rt.take().expect("uninitialized runtime");
-        self.handle = Some(thread::spawn(move || {
-            log::info!("Starting runtime in a separate thread");
-            rt.block_on(async move {
-                rx.recv().await;
-            });
-        }));
-    }
-
-    fn stop(&mut self) {
-        let _ = self
-            .tx
+    fn stop(&self) {
+        let _ = self.tx.blocking_send(());
+        self.handle
+            .lock()
+            .unwrap()
             .take()
-            .expect("uninitialized runtime")
-            .blocking_send(());
-        self.handle.take().unwrap().join().unwrap();
+            .expect("runtime terminated?")
+            .join()
+            .unwrap();
     }
 }
 
 #[cxx::bridge]
 mod server {
     extern "Rust" {
-        type Runtime;
+        fn init_runtime();
 
-        fn init_runtime() -> Result<Box<Runtime>>;
+        fn start_servers(json_addr: &str, grpc_addr: &str) -> Result<()>;
 
-        fn start_servers(
-            runtime: Box<Runtime>,
-            json_addr: &str,
-            grpc_addr: &str,
-        ) -> Result<Box<Runtime>>;
-
-        fn stop_servers(runtime: Box<Runtime>) -> Result<()>;
+        fn stop_runtime();
     }
 }
 
-fn init_runtime() -> Result<Box<Runtime>, Box<dyn Error>> {
+fn init_runtime() {
     LogBuilder::from_env(Env::default().default_filter_or(Level::Info.as_str())).init();
-    Runtime::new_boxed()
+    let _ = &*RUNTIME;
 }
 
-fn start_servers(
-    mut runtime: Box<Runtime>,
-    json_addr: &str,
-    grpc_addr: &str,
-) -> Result<Box<Runtime>, Box<dyn Error>> {
-    runtime.add_json_rpc_server(json_addr)?;
-    runtime.add_grpc_server(grpc_addr)?;
-    runtime.start();
-    Ok(runtime)
-}
-
-#[allow(clippy::boxed_local)]
-fn stop_servers(mut runtime: Box<Runtime>) -> Result<(), Box<dyn Error>> {
-    log::info!("Stopping gRPC and JSON RPC servers");
-    runtime.stop();
+fn start_servers(json_addr: &str, grpc_addr: &str) -> Result<(), Box<dyn Error>> {
+    RUNTIME.add_json_rpc_server(json_addr)?;
+    RUNTIME.add_grpc_server(grpc_addr)?;
     Ok(())
+}
+
+fn stop_runtime() {
+    log::info!("Stopping gRPC and JSON RPC servers");
+    RUNTIME.stop();
 }

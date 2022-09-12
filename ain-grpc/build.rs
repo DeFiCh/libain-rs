@@ -69,19 +69,13 @@ impl Attr {
 const TYPE_ATTRS: &[Attr] = &[
     Attr {
         matcher: ".*",
-        attr: Some("#[derive(Serialize)] #[serde(rename_all=\"camelCase\")]"),
+        attr: Some("#[derive(Serialize, Deserialize)] #[serde(rename_all=\"camelCase\")]"),
         rename: None,
         skip: &["BlockResult", "NonUtxo", "^Transaction"],
     },
     Attr {
-        matcher: ".*Input",
-        attr: Some("#[derive(Deserialize)]"),
-        rename: None,
-        skip: &[],
-    },
-    Attr {
         matcher: "NonUtxo",
-        attr: Some("#[derive(Serialize)] #[serde(rename_all=\"PascalCase\")]"),
+        attr: Some("#[derive(Serialize, Deserialize)] #[serde(rename_all=\"PascalCase\")]"),
         rename: None,
         skip: &[],
     },
@@ -170,18 +164,34 @@ struct WrappedGenerator {
 #[derive(Debug)]
 struct Rpc {
     name: String,
+    url: Option<String>,
     input_ty: String,
     output_ty: String,
 }
 
 impl ServiceGenerator for WrappedGenerator {
     fn generate(&mut self, service: Service, buf: &mut String) {
+        let re = Regex::new("\\[rpc: (.*?)\\]").unwrap();
         for method in &service.methods {
             let mut ref_map = self.methods.borrow_mut();
             let vec = ref_map.entry(service.name.clone()).or_insert(vec![]);
+            let mut u = None;
+            for line in method
+                .comments
+                .leading_detached
+                .iter()
+                .flatten()
+                .chain(method.comments.leading.iter())
+                .chain(method.comments.trailing.iter())
+            {
+                if let Some(captures) = re.captures(line) {
+                    u = Some(captures.get(1).unwrap().as_str().into());
+                }
+            }
             vec.push(Rpc {
                 name: method.proto_name.clone(),
                 input_ty: method.input_proto_type.clone(),
+                url: u,
                 output_ty: method.output_proto_type.clone(),
             });
         }
@@ -258,7 +268,7 @@ fn modify_codegen(
         .read_to_string(&mut contents)
         .unwrap();
     let mut codegen = String::new();
-    codegen.push_str("\n#[cxx::bridge]\nmod ffi {\n\n");
+    codegen.push_str("\n#[cxx::bridge]\nmod ffi {\n");
     codegen.push_str(&ffi_tt.to_string());
     codegen.push_str("\n}\n");
     codegen.push_str(&impl_tt.to_string());
@@ -409,6 +419,20 @@ fn apply_substitutions(
     // FIXME: We don't have to regenerate if the struct only has scalar types
     // (in which case it'll have the same schema in both FFI and protobuf)
     let mut impls = quote! {
+        use jsonrpsee::{core::client::ClientT, http_client::{HttpClient, HttpClientBuilder}};
+        use std::sync::Arc;
+        use self::ffi::*;
+        pub struct Client {
+            inner: Arc<HttpClient>,
+            handle: tokio::runtime::Handle,
+        }
+        #[allow(non_snake_case)]
+        fn NewClient(addr: &str) -> Result<Box<Client>, Box<dyn std::error::Error>> {
+            Ok(Box::new(Client {
+                inner: Arc::new(HttpClientBuilder::default().build(addr)?),
+                handle: crate::RUNTIME.rt_handle.clone(),
+            }))
+        }
         fn extract_error(exc: cxx::Exception) -> jsonrpsee_core::Error {
             let msg = exc.what();
             let error: jsonrpsee_types::ErrorObject<'_> = match serde_json::from_str(msg) {
@@ -500,8 +524,9 @@ fn apply_substitutions(
     for (mod_name, mod_methods) in methods {
         let server_mod = calls.entry(mod_name).or_insert((quote!(), quote!()));
         for method in mod_methods {
-            let (name, name_rs, ivar, ity, oty) = (
+            let (name, client_name, name_rs, ivar, ity, oty) = (
                 Ident::new(&method.name, Span::call_site()),
+                Ident::new(&format!("Call{}", &method.name), Span::call_site()),
                 Ident::new(&method.name.to_snek_case(), Span::call_site()),
                 Ident::new(
                     &method.input_ty.split('.').last().unwrap().to_snek_case(),
@@ -517,15 +542,18 @@ fn apply_substitutions(
                 ),
             );
             let mut param_ffi = quote!();
-            let (input_rs, input_ffi, into_ffi, call_ffi) =
+            let (input_rs, input_ffi, client_ffi, client_params, into_ffi, call_ffi) =
                 if method.input_ty == ".google.protobuf.Empty" {
                     (
                         quote!(&self, _request: tonic::Request<()>),
                         quote!(result: &mut #oty),
+                        quote!(client: &Client),
+                        quote!(),
                         quote!(),
                         quote!(&mut out),
                     )
                 } else {
+                    let mut values = quote!();
                     param_ffi = quote! {
                         let mut #ivar = super::types::#ity::default();
                     };
@@ -534,7 +562,7 @@ fn apply_substitutions(
                     match &type_struct.fields {
                         Fields::Named(ref f) => {
                             let mut extract_fields = quote!();
-                            for field in &f.named {
+                            for (i, field) in f.named.iter().enumerate() {
                                 let name = &field.ident;
                                 let name_str = name.as_ref().unwrap().to_string();
                                 let seq_extract = if let Some(value) = extract_default(field) {
@@ -542,6 +570,12 @@ fn apply_substitutions(
                                 } else {
                                     quote!(seq.next().map_err(|_| missing_param(#name_str))?)
                                 };
+                                values.extend(quote!(
+                                    &#ivar.#name
+                                ));
+                                if i < f.named.len() - 1 {
+                                    values.extend(quote!(,));
+                                }
                                 extract_fields.extend(quote!(
                                     #ivar.#name = #seq_extract;
                                 ));
@@ -562,6 +596,8 @@ fn apply_substitutions(
                     (
                         quote!(&self, request: tonic::Request<super::types::#ity>),
                         quote!(#ivar: &mut #ity, result: &mut #oty),
+                        quote!(client: &Client, #ivar: #ity),
+                        values,
                         quote! { let mut input = request.into_inner().into(); },
                         quote!(&mut input, &mut out),
                     )
@@ -569,7 +605,27 @@ fn apply_substitutions(
             rpc.extend(quote!(
                 fn #name(#input_ffi) -> Result<()>;
             ));
-            let rpc_name = method.name.to_lowercase();
+            sigs.extend(quote!(
+                fn #client_name(#client_ffi) -> Result<#oty>;
+            ));
+            let rpc_name = method
+                .url
+                .as_ref()
+                .map(String::from)
+                .unwrap_or_else(|| method.name.to_lowercase());
+            funcs.extend(quote! {
+                #[allow(non_snake_case)]
+                fn #client_name(#client_ffi) -> Result<ffi::#oty, Box<dyn std::error::Error>> {
+                    let (tx, mut rx) = tokio::sync::mpsc::channel(1);
+                    let c = client.inner.clone();
+                    client.handle.spawn(async move {
+                        let params = jsonrpsee::rpc_params![#client_params];
+                        let resp: Result<super::types::#oty, _> = c.request(#rpc_name, params).await;
+                        let _ = tx.send(resp).await;
+                    });
+                    Ok(rx.blocking_recv().unwrap().map(Into::into)?)
+                }
+            });
             server_mod.0.extend(quote!(
                 module.register_blocking_method(#rpc_name, |_params, _| {
                     #param_ffi
@@ -600,6 +656,8 @@ fn apply_substitutions(
 
     gen.extend(quote!(
         extern "Rust" {
+            type Client;
+            fn NewClient(addr: &str) -> Result<Box<Client>>;
             #sigs
         }
         unsafe extern "C++" {
@@ -671,11 +729,11 @@ fn generate_cxx_glue(tt: TokenStream, target_dir: &Path) {
         assert!(cpp_stuff.contains(dest));
     }
 
-    File::create(target_dir.join("libain.hpp"))
+    File::create(target_dir.join("libain_rpc.hpp"))
         .unwrap()
         .write_all(&codegen.header)
         .unwrap();
-    File::create(target_dir.join("libain.cpp"))
+    File::create(target_dir.join("libain_rpc.cpp"))
         .unwrap()
         .write_all(cpp_stuff.as_bytes())
         .unwrap();
