@@ -2,6 +2,14 @@ CARGO ?= cargo
 CBINDGEN ?= cbindgen
 TARGET ?=
 
+install-deps:
+	apt install -y curl unzip
+	curl -OL https://github.com/protocolbuffers/protobuf/releases/download/v3.20.0/protoc-3.20.0-linux-x86_64.zip
+	unzip -o protoc-3.20.0-linux-x86_64.zip -d ./proto
+	chmod 755 -R ./proto/bin
+	cp ./proto/bin/protoc /usr/local/bin/
+	cp -R ./proto/include/* /usr/local/include/
+
 build-wasm-pkg :
 	$(CARGO) build --package runtime --release
 	$(CBINDGEN) --config=cbindgen.toml --crate runtime --output pkg/runtime-cpp/includes/runtime.h

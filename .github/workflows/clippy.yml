@@ -16,5 +16,7 @@ jobs:
           - ubuntu-18.04
     steps:
       - uses: actions/checkout@v2
+      - name: Install deps
+        run: sudo make install-deps
       - run: rustup component add clippy
       - run: cargo clippy -- -D warnings
