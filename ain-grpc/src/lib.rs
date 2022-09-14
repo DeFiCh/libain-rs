@@ -5,8 +5,8 @@ extern crate serde_json;
 mod codegen;
 
 use env_logger::{Builder as LogBuilder, Env};
-use jsonrpsee::http_server::{HttpServerBuilder, HttpServerHandle};
 use jsonrpsee_core::server::rpc_module::Methods;
+use jsonrpsee_http_server::{HttpServerBuilder, HttpServerHandle};
 use log::Level;
 use tokio::runtime::{Builder, Handle as AsyncHandle};
 use tokio::sync::mpsc::{self, Sender};

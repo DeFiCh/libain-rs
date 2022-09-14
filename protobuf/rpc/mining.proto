@@ -5,12 +5,12 @@ import "google/protobuf/empty.proto";
 import "types/mining.proto";
 
 service Mining {
-    // Returns the estimated network hashes per second based on the last n blocks.
+    // Returns the estimated network hashes per second based on the last n blocks. [ignore]
     rpc GetNetworkHashPerSecond(types.GetNetworkHashPerSecondInput) returns (types.GetNetworkHashPerSecondResult);
 
-    // Returns a json object containing mining-related information for all local masternodes
+    // Returns a json object containing mining-related information for all local masternodes. [ignore]
     rpc GetMiningInfo(google.protobuf.Empty) returns (types.MiningInfo);
 
-    // Estimates the approximate fee per kilobyte needed for a transaction to begin
+    // Estimates the approximate fee per kilobyte needed for a transaction to begin. [ignore]
     rpc EstimateSmartFee(types.EstimateSmartFeeInput) returns (types.EstimateSmartFeeResult);
 }

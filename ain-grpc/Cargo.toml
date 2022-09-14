@@ -10,9 +10,10 @@ crate-type = ["staticlib"]
 [dependencies]
 cxx = "1.0"
 env_logger = "0.9"
-jsonrpsee = { version = "0.14", features = ["http-server", "http-client"] }
-jsonrpsee-core = "0.14"
-jsonrpsee-types = "0.14"
+jsonrpsee-core = "0.15"
+jsonrpsee-http-client = { version = "0.15", default-features = false }
+jsonrpsee-http-server = "0.15"
+jsonrpsee-types = "0.15"
 lazy_static = "1.4"
 log = "0.4"
 num-traits = "0.2"

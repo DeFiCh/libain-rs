@@ -17,7 +17,7 @@ build-wasm-pkg :
 build-grpc-pkg:
 	CRATE_CC_NO_DEFAULTS=1 $(CARGO) build --package ain-grpc --release $(if $(TARGET),--target $(TARGET),)
 	mkdir -p pkg/ain-grpc/include pkg/ain-grpc/lib
-	cp target/release/libain_grpc.a pkg/ain-grpc/lib/
+	cp target/$(if $(TARGET),$(TARGET)/,)release/libain_grpc.a pkg/ain-grpc/lib/
 	cp target/libain_rpc.hpp pkg/ain-grpc/include/
 	cp target/libain_rpc.cpp pkg/ain-grpc/
 
