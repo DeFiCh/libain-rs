@@ -17,11 +17,11 @@ jsonrpsee-types = "0.15"
 lazy_static = "1.4"
 log = "0.4"
 num-traits = "0.2"
-prost = "0.10"
+prost = "0.11"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 tokio = { version = "1.1", features = ["rt-multi-thread"] }
-tonic = "0.7"
+tonic = "0.8"
 
 [build-dependencies]
 cxx-gen = "0.7"
@@ -30,5 +30,5 @@ proc-macro2 = "1.0"
 quote = "1.0"
 regex = "1.5"
 syn = { version = "1.0", features = ["full"] }
-prost-build = "0.10"
-tonic-build = "0.7"
+prost-build = "0.11"
+tonic-build = "0.8"

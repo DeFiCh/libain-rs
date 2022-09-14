@@ -638,6 +638,7 @@ fn apply_substitutions(
             }
             if method.client {
                 sigs.extend(quote!(
+                    #[allow(clippy::borrowed_box)]
                     fn #client_name(#client_ffi) -> Result<#oty>;
                 ));
             }
@@ -650,6 +651,7 @@ fn apply_substitutions(
             if method.client {
                 funcs.extend(quote! {
                     #[allow(non_snake_case)]
+                    #[allow(clippy::borrowed_box)]
                     fn #client_name(#client_ffi) -> Result<ffi::#oty, Box<dyn std::error::Error>> {
                         let (tx, mut rx) = tokio::sync::mpsc::channel(1);
                         let c = client.inner.clone();
