@@ -12,15 +12,17 @@ use tokio::runtime::{Builder, Handle as AsyncHandle};
 use tokio::sync::mpsc::{self, Sender};
 use tonic::transport::Server;
 
-use crate::codegen::rpc::BlockchainService;
-use crate::codegen::rpc::MiningService;
+use crate::codegen::rpc::{BlockchainService, Client, MiningService};
 
+use std::collections::HashMap;
 use std::error::Error;
 use std::net::SocketAddr;
-use std::sync::Mutex;
+use std::sync::{Mutex, RwLock};
 use std::thread::{self, JoinHandle};
 
 lazy_static::lazy_static! {
+    // RPC clients cached globally based on address so that clients can be instantiated at will
+    static ref CLIENTS: RwLock<HashMap<String, Client>> = RwLock::new(HashMap::new());
     // Global runtime exposed by the library
     static ref RUNTIME: Runtime = Runtime::new();
 }

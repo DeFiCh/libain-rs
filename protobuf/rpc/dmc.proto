@@ -1,0 +1,18 @@
+syntax = "proto3";
+package rpc;
+
+import "types/dmc.proto";
+
+service Metachain {
+    // [rpc: metaConsensusRpc_getBlockHash] [client]
+    rpc GetBlockHash(types.MetaBlockInput) returns (types.MetaBlockResult);
+
+    // [rpc: metaConsensusRpc_getBlock] [client]
+    rpc GetBlock(types.MetaBlockInput) returns (types.MetaBlockResult);
+
+    // [rpc: metaConsensusRpc_mintBlock] [client]
+    rpc MintBlock(types.MetaMintInput) returns (types.MetaMintResult);
+
+    // [rpc: metaConsensusRpc_connectBlock] [client]
+    rpc ConnectBlock(types.MetaConnectBlockInput) returns (types.MetaConnectBlockResult);
+}

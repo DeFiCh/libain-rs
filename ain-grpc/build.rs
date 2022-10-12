@@ -71,7 +71,7 @@ const TYPE_ATTRS: &[Attr] = &[
         matcher: ".*",
         attr: Some("#[derive(Serialize, Deserialize)] #[serde(rename_all=\"camelCase\")]"),
         rename: None,
-        skip: &["BlockResult", "NonUtxo", "^Transaction"],
+        skip: &["^(Meta)?BlockResult", "NonUtxo", "^Transaction"],
     },
     Attr {
         matcher: "NonUtxo",
@@ -86,13 +86,13 @@ const FIELD_ATTRS: &[Attr] = &[
         matcher: ":::prost::alloc::string::String",
         attr: Some("#[serde(skip_serializing_if = \"String::is_empty\")]"),
         rename: None,
-        skip: &["BlockResult", "NonUtxo", "^Transaction"],
+        skip: &["^(Meta)?BlockResult", "NonUtxo", "^Transaction"],
     },
     Attr {
         matcher: ":::prost::alloc::vec::Vec",
         attr: Some("#[serde(skip_serializing_if = \"Vec::is_empty\")]"),
         rename: None,
-        skip: &[],
+        skip: &["MetaBlockResult"],
     },
     Attr {
         matcher: "req_sigs",
@@ -308,11 +308,12 @@ fn modify_codegen(
 
                 impl #service {
                     #[inline]
+                    #[allow(dead_code)]
                     pub fn service() -> #svc_mod::#server<#service> {
                         #svc_mod::#server::new(#service)
                     }
                     #[inline]
-                    #[allow(unused_mut)]
+                    #[allow(unused_mut, dead_code)]
                     pub fn module() -> Result<jsonrpsee_http_server::RpcModule<()>, jsonrpsee_core::Error> {
                         let mut module = jsonrpsee_http_server::RpcModule::new(());
                         #jrpc_tt
@@ -437,18 +438,25 @@ fn apply_substitutions(
         use jsonrpsee_core::client::ClientT;
         use jsonrpsee_http_client::{HttpClient, HttpClientBuilder};
         use std::sync::Arc;
+        use crate::{CLIENTS, RUNTIME};
         #[allow(unused_imports)]
         use self::ffi::*;
+        #[derive(Clone)]
         pub struct Client {
             inner: Arc<HttpClient>,
             handle: tokio::runtime::Handle,
         }
         #[allow(non_snake_case)]
         fn NewClient(addr: &str) -> Result<Box<Client>, Box<dyn std::error::Error>> {
-            Ok(Box::new(Client {
-                inner: Arc::new(HttpClientBuilder::default().build(addr)?),
-                handle: crate::RUNTIME.rt_handle.clone(),
-            }))
+            if CLIENTS.read().unwrap().get(addr).is_none() {
+                let c = Client {
+                    inner: Arc::new(HttpClientBuilder::default().build(addr)?),
+                    handle: RUNTIME.rt_handle.clone(),
+                };
+                CLIENTS.write().unwrap().insert(addr.into(), c);
+            }
+
+            Ok(Box::new(CLIENTS.read().unwrap().get(addr).unwrap().clone()))
         }
         #[allow(dead_code)]
         fn extract_error(exc: cxx::Exception) -> jsonrpsee_core::Error {
@@ -567,7 +575,9 @@ fn apply_substitutions(
                         quote!(&self, _request: tonic::Request<()>),
                         quote!(result: &mut #oty),
                         quote!(client: &Box<Client>),
-                        quote!(),
+                        quote! {
+                            let params = jsonrpsee_core::rpc_params![];
+                        },
                         quote!(),
                         quote!(&mut out),
                     )
@@ -616,7 +626,10 @@ fn apply_substitutions(
                         quote!(&self, request: tonic::Request<super::types::#ity>),
                         quote!(#ivar: &mut #ity, result: &mut #oty),
                         quote!(client: &Box<Client>, #ivar: #ity),
-                        values,
+                        quote! {
+                            let #ivar = super::types::#ity::from(#ivar);
+                            let params = jsonrpsee_core::rpc_params![#values];
+                        },
                         quote! { let mut input = request.into_inner().into(); },
                         quote!(&mut input, &mut out),
                     )
@@ -656,7 +669,7 @@ fn apply_substitutions(
                         let (tx, mut rx) = tokio::sync::mpsc::channel(1);
                         let c = client.inner.clone();
                         client.handle.spawn(async move {
-                            let params = jsonrpsee_core::rpc_params![#client_params];
+                            #client_params
                             let resp: Result<super::types::#oty, _> = c.request(#rpc_name, params).await;
                             let _ = tx.send(resp).await;
                         });
