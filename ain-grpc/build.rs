@@ -74,6 +74,12 @@ const TYPE_ATTRS: &[Attr] = &[
         skip: &["^(Meta)?BlockResult", "NonUtxo", "^Transaction"],
     },
     Attr {
+        matcher: ".*",
+        attr: Some("#[allow(clippy::derive_partial_eq_without_eq)]"),
+        rename: None,
+        skip: &[],
+    },
+    Attr {
         matcher: "NonUtxo",
         attr: Some("#[derive(Serialize, Deserialize)] #[serde(rename_all=\"PascalCase\")]"),
         rename: None,
