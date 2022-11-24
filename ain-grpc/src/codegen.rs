@@ -52,48 +52,6 @@ impl<'de> Deserialize<'de> for types::BlockResult {
     }
 }
 
-impl Serialize for types::MetaBlockResult {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        if !self.hash.is_empty() {
-            return serializer.serialize_str(&self.hash);
-        }
-
-        if !self.block.is_empty() {
-            return self.block.serialize(serializer);
-        }
-
-        serializer.serialize_str("")
-    }
-}
-
-impl<'de> Deserialize<'de> for types::MetaBlockResult {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        #[derive(Deserialize)]
-        #[serde(untagged)]
-        enum Res {
-            Hash(String),
-            Block(Vec<u8>),
-        }
-
-        match Res::deserialize(deserializer)? {
-            Res::Hash(s) => Ok(types::MetaBlockResult {
-                hash: s,
-                block: vec![],
-            }),
-            Res::Block(b) => Ok(types::MetaBlockResult {
-                hash: "".into(),
-                block: b,
-            }),
-        }
-    }
-}
-
 impl Serialize for types::Transaction {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -135,7 +93,7 @@ impl<'de> Deserialize<'de> for types::Transaction {
 
 #[cfg(test)]
 mod tests {
-    use super::types::{BlockResult, MetaBlockResult, Transaction};
+    use super::types::{BlockResult, Transaction};
 
     #[test]
     fn test_block_result_json() {
@@ -145,17 +103,6 @@ mod tests {
         };
         let res = serde_json::to_value(&foo).unwrap();
         let foo2: BlockResult = serde_json::from_value(res).unwrap();
-        assert_eq!(serde_json::to_value(&foo2).unwrap(), "foobar");
-    }
-
-    #[test]
-    fn test_meta_block_result_json() {
-        let foo = MetaBlockResult {
-            hash: "foobar".into(),
-            block: vec![],
-        };
-        let res = serde_json::to_value(&foo).unwrap();
-        let foo2: MetaBlockResult = serde_json::from_value(res).unwrap();
         assert_eq!(serde_json::to_value(&foo2).unwrap(), "foobar");
     }
 

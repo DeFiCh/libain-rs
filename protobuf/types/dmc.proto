@@ -1,39 +1,26 @@
 syntax = "proto3";
 package types;
 
+// NOTE: The definitions here must match those in metachain
+
 message MetaTransaction {
     string from = 1;
     string to = 2;
     int64 amount = 3;
-    string signature = 4;
 }
 
 message MetaBlockInput {
-    int64 at = 1; // [default: -1]
+    repeated MetaTransaction txs = 2;
 }
 
 message MetaBlockResult {
-    string hash = 1;
-    bytes block = 2;
-}
-
-message MetaMintInput {
-    repeated MetaTransaction dnc_txs = 1;
-    uint64 secret = 2; // secret obtained from handshake
-}
-
-message MetaMintResult {
-    bytes block = 1;
-    repeated MetaTransaction dmc_txs = 2;
+    bytes payload = 1;
 }
 
 message MetaConnectBlockInput {
-    bytes dmc_payload = 1;
-    repeated MetaTransaction dnc_txs = 2;
-    uint64 secret = 3; // secret obtained from handshake
+    bytes payload = 1;
 }
 
 message MetaConnectBlockResult {
-    bool imported = 1;
-    repeated MetaTransaction dmc_txs = 2;
+    string hash = 1;
 }

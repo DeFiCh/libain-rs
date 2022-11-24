@@ -3,16 +3,12 @@ package rpc;
 
 import "types/dmc.proto";
 
+// NOTE: The definitions here must match those in metachain
+
 service Metachain {
-    // [rpc: metaConsensusRpc_getBlockHash] [client]
-    rpc GetBlockHash(types.MetaBlockInput) returns (types.MetaBlockResult);
-
-    // [rpc: metaConsensusRpc_getBlock] [client]
-    rpc GetBlock(types.MetaBlockInput) returns (types.MetaBlockResult);
-
     // [rpc: metaConsensusRpc_mintBlock] [client]
-    rpc MintBlock(types.MetaMintInput) returns (types.MetaMintResult);
+    rpc MetaMintBlock(types.MetaBlockInput) returns (types.MetaBlockResult);
 
     // [rpc: metaConsensusRpc_connectBlock] [client]
-    rpc ConnectBlock(types.MetaConnectBlockInput) returns (types.MetaConnectBlockResult);
+    rpc MetaConnectBlock(types.MetaConnectBlockInput) returns (types.MetaConnectBlockResult);
 }

@@ -71,7 +71,7 @@ const TYPE_ATTRS: &[Attr] = &[
         matcher: ".*",
         attr: Some("#[derive(Serialize, Deserialize)] #[serde(rename_all=\"camelCase\")]"),
         rename: None,
-        skip: &["^(Meta)?BlockResult", "NonUtxo", "^Transaction"],
+        skip: &["^BlockResult", "NonUtxo", "^Transaction"],
     },
     Attr {
         matcher: ".*",
@@ -92,13 +92,13 @@ const FIELD_ATTRS: &[Attr] = &[
         matcher: ":::prost::alloc::string::String",
         attr: Some("#[serde(skip_serializing_if = \"String::is_empty\")]"),
         rename: None,
-        skip: &["^(Meta)?BlockResult", "NonUtxo", "^Transaction"],
+        skip: &["^BlockResult", "NonUtxo", "^Transaction"],
     },
     Attr {
         matcher: ":::prost::alloc::vec::Vec",
         attr: Some("#[serde(skip_serializing_if = \"Vec::is_empty\")]"),
         rename: None,
-        skip: &["MetaBlockResult"],
+        skip: &[],
     },
     Attr {
         matcher: "req_sigs",
@@ -182,7 +182,7 @@ impl ServiceGenerator for WrappedGenerator {
         let re = Regex::new("\\[rpc: (.*?)\\]").unwrap();
         for method in &service.methods {
             let mut ref_map = self.methods.borrow_mut();
-            let vec = ref_map.entry(service.name.clone()).or_insert(vec![]);
+            let vec = ref_map.entry(service.name.clone()).or_default();
             let mut rpc = Rpc {
                 name: method.proto_name.clone(),
                 input_ty: method.input_proto_type.clone(),
@@ -303,7 +303,7 @@ fn modify_codegen(
                 Span::call_site(),
             ),
             Ident::new(
-                &format!("{}Server", server_mod).to_snek_case(),
+                &format!("{server_mod}Server").to_snek_case(),
                 Span::call_site(),
             ),
             Ident::new(&server_mod.to_pascal_case(), Span::call_site()),
@@ -455,6 +455,7 @@ fn apply_substitutions(
         #[allow(non_snake_case)]
         fn NewClient(addr: &str) -> Result<Box<Client>, Box<dyn std::error::Error>> {
             if CLIENTS.read().unwrap().get(addr).is_none() {
+                log::info!("Initializing RPC client for {}", addr);
                 let c = Client {
                     inner: Arc::new(HttpClientBuilder::default().build(addr)?),
                     handle: RUNTIME.rt_handle.clone(),
@@ -480,7 +481,7 @@ fn apply_substitutions(
         #[allow(dead_code)]
         fn missing_param(field: &str) -> jsonrpsee_core::Error {
             jsonrpsee_core::Error::Call(jsonrpsee_types::error::CallError::Custom(
-                jsonrpsee_types::ErrorObject::borrowed(-1, &format!("Missing required parameter '{}'", field), None).into_owned()
+                jsonrpsee_types::ErrorObject::borrowed(-1, &format!("Missing required parameter '{field}'"), None).into_owned()
             ))
         }
     };
